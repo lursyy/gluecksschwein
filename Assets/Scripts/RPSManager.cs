@@ -3,6 +3,7 @@ using UnityEngine.Networking;
 using UnityEngine.UI;
 
 #pragma warning disable 618
+#pragma warning disable 649
 
 // ReSharper disable once InconsistentNaming
 public class RPSManager : NetworkBehaviour
