@@ -46,7 +46,7 @@ public class Player : NetworkBehaviour
     [Command]
     public void CmdDrawHand(int index, int range)
     {
-        handCards = GameManager.Singleton.cardDeck.ToList().GetRange(index, range);
+        handCards = GameManager.Singleton.syncListCardDeck.ToList().GetRange(index, range);
         Debug.Log($"Player::CmdDrawHand: (Server) player {netId} drawing cards {index} to {index+range-1}: " +
                   $"{string.Join(", ", handCards)}");
         RpcDrawHand(index, range);
@@ -55,7 +55,7 @@ public class Player : NetworkBehaviour
     [ClientRpc]
     public void RpcDrawHand(int index, int range)
     {
-        handCards = GameManager.Singleton.cardDeck.ToList().GetRange(index, range);
+        handCards = GameManager.Singleton.syncListCardDeck.ToList().GetRange(index, range);
         Debug.Log($"Player::RpcDrawHand: (Client) player {netId} drawing cards {index} to {index+range-1}:" +
                   $"{string.Join(", ", handCards)}");
         

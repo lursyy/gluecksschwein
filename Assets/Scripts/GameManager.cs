@@ -11,10 +11,11 @@ public class GameManager : NetworkBehaviour
     public Player localPlayer;
     public List<Button> localPlayerCardButtons;
 
+    private List<PlayingCard.PlayingCardInfo> _cardDeck;
     public class SyncListCardDeck : SyncListStruct<PlayingCard.PlayingCardInfo>
     {
     }
-    public SyncListCardDeck cardDeck = new SyncListCardDeck();
+    public SyncListCardDeck syncListCardDeck = new SyncListCardDeck();
     //public List<PlayingCard.PlayingCardInfo> cardDeck;
     
     public List<GameObject> playedCardSlots;
@@ -29,18 +30,14 @@ public class GameManager : NetworkBehaviour
     {
         Singleton = this;
         //cardDeck.Callback = (op, index) => Debug.Log($"cardDeck changed at index {index} on netId {netId}");
+        _cardDeck = PlayingCard.InitializeCardDeck();
     }
 
     public override void OnStartServer()
     {
-        InitializeCardDeck();
-    }
-
-    private void InitializeCardDeck()
-    {
-        foreach (PlayingCard.PlayingCardInfo cardInfo in PlayingCard.InitializeCardDeck())
+        foreach (PlayingCard.PlayingCardInfo cardInfo in _cardDeck)
         {
-            cardDeck.Add(cardInfo);
+            syncListCardDeck.Add(cardInfo);
         }
     }
 
