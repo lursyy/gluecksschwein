@@ -2,13 +2,17 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Networking;
 
-public class PlayingCard
+public static class PlayingCard
 {
-    public Suit CardSuit { get; set; }
-    public Rank CardRank { get; set; }
-    public bool IsTrump { get; set; }
-    public Sprite Image { get; set; }
+ 
+    // use struct for easy serialization in SyncList
+    public struct PlayingCardInfo
+    {
+        public Rank Rank;
+        public Suit Suit;
+    }
 
     public enum Suit
     {
@@ -30,21 +34,14 @@ public class PlayingCard
         Ass
     }
 
-    public Sprite GetSprite()
-    {
-        return GetSprite(CardSuit, CardRank);
-    }
-    
 
-    
-    
-    
-    
-    public static Sprite GetSprite(Suit suit, Rank rank)
+    public static Dictionary<PlayingCardInfo, Sprite> SpriteDict = new Dictionary<PlayingCardInfo, Sprite>();
+
+    public static Sprite GetSprite(PlayingCardInfo cardInfo)
     {
         string pathSuffix = "";
-        pathSuffix += suit.ToString().ToLower();
-        pathSuffix += GetRankFileSuffix(rank);
+        pathSuffix += cardInfo.Suit.ToString().ToLower();
+        pathSuffix += GetRankFileSuffix(cardInfo.Rank);
         return Resources.Load<Sprite>($"Spielkarten/{pathSuffix}");
     }
 
@@ -72,4 +69,33 @@ public class PlayingCard
                 throw new ArgumentOutOfRangeException(nameof(rank), rank, null);
         }
     }
+
+    public static List<PlayingCardInfo> InitializeCardDeck()
+    {
+        var deck = new List<PlayingCardInfo>();
+        
+        var ranks = Enum.GetValues(typeof(Rank));
+        var suits = Enum.GetValues(typeof(Suit));
+        foreach (Suit suit in suits)
+        {
+            foreach (Rank rank in ranks)
+            {
+                PlayingCardInfo cardInfo = new PlayingCardInfo
+                    {
+                        Suit = suit,
+                        Rank = rank,
+                    };
+                deck.Add(cardInfo);
+                
+                // also store the sprite in the dictionary for later access
+                SpriteDict[cardInfo] = GetSprite(cardInfo);
+            }
+        }
+
+        deck.Shuffle();
+
+        return deck;
+    }
+    
+    
 }
