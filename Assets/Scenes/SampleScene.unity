@@ -342,7 +342,6 @@ MonoBehaviour:
   - {fileID: 2984376461062541492}
   - {fileID: 2984376459696316966}
   - {fileID: 2984376461609031541}
-  cardID: 0
   playedCardSlots:
   - {fileID: 822712271159058168}
   - {fileID: 822712272340348403}
