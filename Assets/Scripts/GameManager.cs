@@ -1,6 +1,5 @@
 ﻿﻿using System.Collections.Generic;
-using System.Linq;
-using UnityEngine;
+ using UnityEngine;
 using UnityEngine.Networking;
 using UnityEngine.UI;
 
@@ -10,13 +9,15 @@ public class GameManager : NetworkBehaviour
     public List<Player> players = new List<Player>();
     public Player localPlayer;
     public List<Button> localPlayerCardButtons;
+    
+    // Server only stuff
+    public Button dealCardsButton;
 
     private List<PlayingCard.PlayingCardInfo> _cardDeck;
     public class SyncListCardDeck : SyncListStruct<PlayingCard.PlayingCardInfo>
     {
     }
     public SyncListCardDeck syncListCardDeck = new SyncListCardDeck();
-    //public List<PlayingCard.PlayingCardInfo> cardDeck;
     
     public List<GameObject> playedCardSlots;
 
@@ -39,6 +40,8 @@ public class GameManager : NetworkBehaviour
         {
             syncListCardDeck.Add(cardInfo);
         }
+        
+        dealCardsButton.onClick.AddListener(DealCards);
     }
 
     // private void Shuffle()
@@ -46,43 +49,35 @@ public class GameManager : NetworkBehaviour
     //     cardDeck.Shuffle();
     // }
 
-    [Command]
-    void CmdPlayCard(PlayingCard.PlayingCardInfo cardInfo)
-    {
-        Debug.Log($"GameManager::CmdPlayCard: someone wants me (the server) to play {cardInfo}");
-
-        // add the card to the played cards
-        playedCards.Add(cardInfo);
-
-        // put the correct image in the position of the just played card
-        playedCardSlots[playedCards.IndexOf(cardInfo)].GetComponent<Image>().sprite = PlayingCard.SpriteDict[cardInfo];
-
-        RpcPlayCard(cardInfo);
-    }
-
-    [ClientRpc]
-    void RpcPlayCard(PlayingCard.PlayingCardInfo cardInfo)
-    {
-        Debug.Log($"GameManager::RpcPlayCard: the server notified me of a new played card: {cardInfo}");
-        playedCards.Add(cardInfo);
-        playedCardSlots[playedCards.IndexOf(cardInfo)].GetComponent<Image>().sprite = PlayingCard.SpriteDict[cardInfo];
-    }
+    // [Command]
+    // void CmdPlayCard(PlayingCard.PlayingCardInfo cardInfo)
+    // {
+    //     Debug.Log($"GameManager::CmdPlayCard: someone wants me (the server) to play {cardInfo}");
+    //
+    //     // add the card to the played cards
+    //     playedCards.Add(cardInfo);
+    //
+    //     // put the correct image in the position of the just played card
+    //     playedCardSlots[playedCards.IndexOf(cardInfo)].GetComponent<Image>().sprite = PlayingCard.SpriteDict[cardInfo];
+    //
+    //     RpcPlayCard(cardInfo);
+    // }
+    //
+    // [ClientRpc]
+    // void RpcPlayCard(PlayingCard.PlayingCardInfo cardInfo)
+    // {
+    //     Debug.Log($"GameManager::RpcPlayCard: the server notified me of a new played card: {cardInfo}");
+    //     playedCards.Add(cardInfo);
+    //     playedCardSlots[playedCards.IndexOf(cardInfo)].GetComponent<Image>().sprite = PlayingCard.SpriteDict[cardInfo];
+    // }
 
     [Server]
     public void AddPlayer(Player player)
     {
         Debug.Log($"GameManager::AddPlayer called, adding Player {player.netId}");
-        if (!isServer)
-        {
-            Debug.LogError("GameManager::AddPlayer should only be called on the server!");
-        }
-
         players.Add(player);
 
-        if (players.Count == 2)
-        {
-            CmdDealCards();
-        }
+        // TODO if (players.Count == 4) { EnterReadyState(); }
     }
 
     /// <summary>
@@ -92,8 +87,8 @@ public class GameManager : NetworkBehaviour
     /// card 16-23 to player 3
     /// card 24-31 to player 4
     /// </summary>
-    [Command]
-    private void CmdDealCards()
+    [Server]
+    public void DealCards()
     {
         int handedCards = 0;
         foreach (Player player in players)
@@ -101,22 +96,12 @@ public class GameManager : NetworkBehaviour
             Debug.Log($"GameManager::CmdDealCards: Player {player.netId} should get " +
                       $"cards {handedCards} to {handedCards+7}");
             // this updates the player's cards on the server object, which then notifies his respective client object
-            player.CmdDrawHand(handedCards, 8);
-
+            for (int i = handedCards; i < handedCards+8; i++)
+            {
+                player.handCards.Add(syncListCardDeck[i]);
+            }
             handedCards += 8;
         }
-    }
-
-    [ClientRpc]
-    private void RpcDealCards()
-    {
-        int handedCards = 0;
-        foreach (Player player in players)
-        {
-            // this updates the player's cards on the server object, which then notifies his respective client object
-            player.RpcDrawHand(handedCards, 8);
-
-            handedCards += 8;
-        }
+        // localPlayer.UpdateButtons();
     }
 }
