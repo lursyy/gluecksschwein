@@ -7,10 +7,7 @@ public class GameManager : NetworkBehaviour
 {
     public static GameManager Singleton;
     public List<Player> players = new List<Player>();
-    // public Player localPlayer;
     public List<Button> localPlayerCardButtons;
-    
-    // Server only stuff
     public Button dealCardsButton;
 
     private List<PlayingCard.PlayingCardInfo> _cardDeck;
@@ -42,6 +39,7 @@ public class GameManager : NetworkBehaviour
         }
         
         dealCardsButton.onClick.AddListener(DealCards);
+        dealCardsButton.gameObject.SetActive(true);
     }
 
     // private void Shuffle()
