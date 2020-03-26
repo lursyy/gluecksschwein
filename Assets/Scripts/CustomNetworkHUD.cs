@@ -75,7 +75,7 @@ public class CustomNetworkHUD : MonoBehaviour
         {
             if (NetworkServer.active)
             {
-                string serverMsg = "Server: port=" + _manager.networkPort;
+                string serverMsg = $"Server running on {NetworkManager.singleton.matchInfo.address}";
 
                 GUI.Label(new Rect(xpos, ypos, 300, 20), serverMsg);
                 ypos += spacing;
@@ -84,7 +84,7 @@ public class CustomNetworkHUD : MonoBehaviour
             if (_manager.IsClientConnected())
             {
                 GUI.Label(new Rect(xpos, ypos, 300, 20),
-                    "Client: connected");
+                    $"Client connected to {NetworkManager.singleton.matchInfo.address}");
                 ypos += spacing;
             }
         }
