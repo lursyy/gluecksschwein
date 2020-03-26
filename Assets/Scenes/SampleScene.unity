@@ -214,7 +214,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   players: []
-  localPlayer: {fileID: 0}
   localPlayerCardButtons:
   - {fileID: 2984376459831369652}
   - {fileID: 2984376460352953576}
@@ -261,7 +260,7 @@ MonoBehaviour:
     i13: 0
     i14: 0
     i15: 0
-  m_ServerOnly: 0
+  m_ServerOnly: 1
   m_LocalPlayerAuthority: 0
 --- !u!1 &327118221
 GameObject:

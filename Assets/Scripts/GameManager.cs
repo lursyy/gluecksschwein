@@ -7,7 +7,7 @@ public class GameManager : NetworkBehaviour
 {
     public static GameManager Singleton;
     public List<Player> players = new List<Player>();
-    public Player localPlayer;
+    // public Player localPlayer;
     public List<Button> localPlayerCardButtons;
     
     // Server only stuff
