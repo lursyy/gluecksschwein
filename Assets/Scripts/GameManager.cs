@@ -39,10 +39,7 @@ public class GameManager : NetworkBehaviour
         {
             _syncListCardDeck.Add(cardInfo);
         }
-
-        dealCardsButton.onClick.AddListener(StartRound);
-        dealCardsButton.gameObject.SetActive(true);
-
+        
         gameStateText = "Warte auf Spieler... (1)";
     }
 
@@ -71,7 +68,18 @@ public class GameManager : NetworkBehaviour
         players.Add(player);
 
         gameStateText = $"Warte auf Spieler... ({players.Count})";
-        // TODO if (players.Count == 4) { EnterReadyState(); }
+
+        if (players.Count == 4)
+        {
+            EnterReadyState();
+        }
+    }
+
+    private void EnterReadyState()
+    {
+        gameStateText = "Bereit zum spielen";
+        dealCardsButton.gameObject.SetActive(true);
+        dealCardsButton.onClick.AddListener(StartRound);
     }
 
 
