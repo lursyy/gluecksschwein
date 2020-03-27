@@ -74,6 +74,7 @@ crashlytics-build.properties
 
 # Generated files
 .idea/**/contentModel.xml
+.idea/**/indexLayout.xml
 
 # Sensitive or high-churn files
 .idea/**/dataSources/
