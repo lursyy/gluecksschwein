@@ -1,5 +1,5 @@
-﻿﻿using System.Collections.Generic;
- using UnityEngine;
+﻿using System.Collections.Generic;
+using UnityEngine;
 using UnityEngine.Networking;
 using UnityEngine.UI;
 
@@ -10,56 +10,58 @@ public class GameManager : NetworkBehaviour
     public List<Button> localPlayerCardButtons;
     public Button dealCardsButton;
 
+    [SyncVar(hook = nameof(OnGameStateTextChanged))] [SerializeField]
+    private string gameStateText;
+
+    [SerializeField] private Text gameStateTextField;
+
     private List<PlayingCard.PlayingCardInfo> _cardDeck;
-    public class SyncListPlayingCard : SyncListStruct<PlayingCard.PlayingCardInfo> { }
-    public SyncListPlayingCard syncListCardDeck = new SyncListPlayingCard();
-    public List<GameObject> playedCardSlots;
-    public SyncListPlayingCard playedCards = new SyncListPlayingCard();
 
-    // private List<Player> _players;
+    public class SyncListPlayingCard : SyncListStruct<PlayingCard.PlayingCardInfo>
+    {
+    }
 
+    private readonly SyncListPlayingCard _syncListCardDeck = new SyncListPlayingCard();
+    [SerializeField] private List<GameObject> playedCardSlots;
+    private readonly SyncListPlayingCard _playedCards = new SyncListPlayingCard();
+    
     // Start is called before the first frame update
     private void Awake()
     {
         Singleton = this;
-        //cardDeck.Callback = (op, index) => Debug.Log($"cardDeck changed at index {index} on netId {netId}");
         _cardDeck = PlayingCard.InitializeCardDeck();
-        playedCards.Callback = Callback;
+        _playedCards.Callback = OnCardPlayed;
     }
 
     public override void OnStartServer()
     {
         foreach (PlayingCard.PlayingCardInfo cardInfo in _cardDeck)
         {
-            syncListCardDeck.Add(cardInfo);
+            _syncListCardDeck.Add(cardInfo);
         }
-        
-        dealCardsButton.onClick.AddListener(DealCards);
+
+        dealCardsButton.onClick.AddListener(StartRound);
         dealCardsButton.gameObject.SetActive(true);
-        // playedCards.Callback = delegate(SyncList<PlayingCard.PlayingCardInfo>.Operation op, int index)
-        // {
-        //     Debug.Log($"playedCards Callback: {playedCards[index]} was played");
-        //     playedCardSlots[playedCards.Count-1].GetComponent<Image>().sprite = PlayingCard.SpriteDict[playedCards[index]];
-        // };
+
+        gameStateText = "Warte auf Spieler... (1)";
     }
 
     [Command]
     public void CmdPlayCard(PlayingCard.PlayingCardInfo cardInfo)
     {
         Debug.Log($"GameManager::CmdPlayCard: someone wants me (the server) to play {cardInfo}");
-    
+
         // add the card to the played cards
-        playedCards.Add(cardInfo);
+        _playedCards.Add(cardInfo);
     }
-    
-    private void Callback(SyncList<PlayingCard.PlayingCardInfo>.Operation op, int i)
+
+    private void OnCardPlayed(SyncList<PlayingCard.PlayingCardInfo>.Operation op, int i)
     {
-        Debug.Log($"GameManager::RpcPlayCard: the server notified me that {playedCards[i]} was played");
+        Debug.Log($"GameManager::RpcPlayCard: the server notified me that {_playedCards[i]} was played");
 
         // put the correct image in the position of the just played card
         playedCardSlots[i].SetActive(true);
-        playedCardSlots[i].GetComponent<Image>().sprite = PlayingCard.SpriteDict[playedCards[i]];
-
+        playedCardSlots[i].GetComponent<Image>().sprite = PlayingCard.SpriteDict[_playedCards[i]];
     }
 
     [Server]
@@ -68,15 +70,22 @@ public class GameManager : NetworkBehaviour
         Debug.Log($"GameManager::AddPlayer called, adding Player {player.netId}");
         players.Add(player);
 
+        gameStateText = $"Warte auf Spieler... ({players.Count})";
         // TODO if (players.Count == 4) { EnterReadyState(); }
     }
 
+
     /// <summary>
-    /// Gives out the cards from the deck:
-    /// card 00-07 to player 1
-    /// card 08-15 to player 2
-    /// card 16-23 to player 3
-    /// card 24-31 to player 4
+    /// Starts a new round TODO what does "round" mean?
+    /// </summary>
+    private void StartRound()
+    {
+        gameStateText = "Runde geht los...";
+        DealCards();
+    }
+
+    /// <summary>
+    /// Gives out the cards from the deck: card 00-07 to player 1, card 08-15 to player 2, card 16-23 to player 3, card 24-31 to player 4
     /// </summary>
     [Server]
     public void DealCards()
@@ -85,14 +94,22 @@ public class GameManager : NetworkBehaviour
         foreach (Player player in players)
         {
             Debug.Log($"GameManager::CmdDealCards: Player {player.netId} should get " +
-                      $"cards {handedCards} to {handedCards+7}");
+                      $"cards {handedCards} to {handedCards + 7}");
             // this updates the player's cards on the server object, which then notifies his respective client object
-            for (int i = handedCards; i < handedCards+8; i++)
+            for (int i = handedCards; i < handedCards + 8; i++)
             {
-                player.handCards.Add(syncListCardDeck[i]);
+                player.handCards.Add(_syncListCardDeck[i]);
             }
+
             handedCards += 8;
         }
+
         // localPlayer.UpdateButtons();
+    }
+
+    void OnGameStateTextChanged(string newText)
+    {
+        Debug.Log($"GameManager::{nameof(OnGameStateTextChanged)}: new text = \"{newText}\"");
+        gameStateTextField.text = newText;
     }
 }
