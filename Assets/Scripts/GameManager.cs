@@ -12,17 +12,18 @@ public class GameManager : NetworkBehaviour
 
     public enum GameState
     {
-        Waiting,
-        GameRunning,
-        PreRound,
-        RoundSau,
-        RoundSolo,
-        RoundWenz,
-        RoundRamsch,
-        RoundFinished
+        Waiting,        // Waiting until 4 players are connected 
+        GameRunning,    // 4 players are connected, host can click button to deal cards
+        PreRound,       // Players take turns deciding the game mode, i.e. Sauspiel, Solo, etc.
+        RoundSau,       // Active during a round of Sauspiel
+        RoundSolo,      // Active during a round of Solo
+        RoundWenz,      // Active during a round of Wenz
+        RoundRamsch,    // Active during a round of Ramsch
+        RoundFinished   // We enter this state after the last "Stich". Here we can show/count scores
+                        // TODO maybe we don't need RoundFinished and can just enter GameRunning instead
     }
 
-    private GameState _currentGameState;
+    [SyncVar] public GameState currentGameState;
 
     [SyncVar(hook = nameof(OnGameStateTextChanged))] [SerializeField]
     private string gameStateText;
@@ -56,11 +57,12 @@ public class GameManager : NetworkBehaviour
     private readonly SyncListPlayingCard _playedCards = new SyncListPlayingCard();
     
     #endregion
+
     
-    
-    
-    /////////////////// Methods
-    
+    ///////////////////////////////////////////////
+    /////////////////// Methods ///////////////////
+    ///////////////////////////////////////////////
+
     #region Game State Transitions
 
     /// <summary>
@@ -69,7 +71,7 @@ public class GameManager : NetworkBehaviour
     /// </summary>
     private void EnterStateWaiting()
     {
-        _currentGameState = GameState.Waiting;
+        currentGameState = GameState.Waiting;
     }
 
     /// <summary>
@@ -80,19 +82,20 @@ public class GameManager : NetworkBehaviour
     private void EnterStateGameRunning()
     {
         // check previous game state
-        if (_currentGameState == GameState.Waiting)
+        if (currentGameState == GameState.Waiting)
         {
             // set starting player to the last one so that before the first round the player 0 gets selected
             _startingPlayer = players[3];
         }
 
         // update the game state
-        _currentGameState = GameState.GameRunning;
+        currentGameState = GameState.GameRunning;
 
         gameStateText = "Bereit zum spielen";
         dealCardsButton.gameObject.SetActive(true);
         dealCardsButton.onClick.AddListener(EnterStatePreRound);
         // TODO: show scoreboard
+        // TODO: maybe ask each player to enter name only here & only once
     }
 
     /// <summary>
@@ -104,10 +107,13 @@ public class GameManager : NetworkBehaviour
     private void EnterStatePreRound()
     {
         // update the game state
-        _currentGameState = GameState.PreRound;
+        currentGameState = GameState.PreRound;
 
         // deal the cards to the players
         DealCards();
+        
+        // disable the dealCards Button
+        dealCardsButton.gameObject.SetActive(false);
 
         // update the starting player
         _startingPlayer = SelectNextStartingPlayer();
@@ -137,7 +143,7 @@ public class GameManager : NetworkBehaviour
     /// </summary>
     private void EnterStateRoundSau()
     {
-        _currentGameState = GameState.RoundSau;
+        currentGameState = GameState.RoundSau;
     }
 
     /// <summary>
@@ -145,7 +151,7 @@ public class GameManager : NetworkBehaviour
     /// </summary>
     private void EnterStateRoundSolo()
     {
-        _currentGameState = GameState.RoundSolo;
+        currentGameState = GameState.RoundSolo;
     }
 
     /// <summary>
@@ -153,7 +159,7 @@ public class GameManager : NetworkBehaviour
     /// </summary>
     private void EnterStateRoundWenz()
     {
-        _currentGameState = GameState.RoundWenz;
+        currentGameState = GameState.RoundWenz;
     }
 
     /// <summary>
@@ -161,7 +167,7 @@ public class GameManager : NetworkBehaviour
     /// </summary>
     private void EnterStateRoundRamsch()
     {
-        _currentGameState = GameState.RoundRamsch;
+        currentGameState = GameState.RoundRamsch;
     }
 
     /// <summary>
@@ -169,7 +175,7 @@ public class GameManager : NetworkBehaviour
     /// </summary>
     private void EnterStateRoundFinished()
     {
-        _currentGameState = GameState.RoundFinished;
+        currentGameState = GameState.RoundFinished;
     }
 
     #endregion

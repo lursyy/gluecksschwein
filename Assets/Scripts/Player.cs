@@ -30,8 +30,7 @@ public class Player : NetworkBehaviour
         
         // set default name
         // (this is not reflected for the gameObject names on the clients)
-        // TODO ask all players to enter name ONCE before starting the first round
-        CmdSetUserName($"Spieler {netId.Value-1}");
+        CmdSetUserName($"Spieler {netId}");
     }
 
     private void Awake()
@@ -66,29 +65,20 @@ public class Player : NetworkBehaviour
         GameManager.Singleton.CmdPlayCard(handCard);
     }
 
-    // public void UpdateButtons()
-    // {
-    //     Debug.Log($"Player::UpdateButtons: player {netId}, isLocalPlayer={isLocalPlayer}");
-    //     for (int i = 0; i < handCards.Count; i++)
-    //     {
-    //         _handButtons[i].image.sprite = PlayingCard.SpriteDict[handCards[i]];
-    //     }
-    // }
-
-
     [Command]
     private void CmdSetUserName(string newName)
     {
+        Debug.Log($"Cmd: Player {netId} was asked to change name");
         playerName = newName;
         name = newName;
         RpcSetUserName(newName);
     }
 
     [ClientRpc]
-    private void RpcSetUserName(string newName)
+    public void RpcSetUserName(string newName)
     {
         // if (!isLocalPlayer) {return;}
-        Debug.Log($"Player {netId} was asked to change name");
+        Debug.Log($"Rpc: Player {netId} was asked to change name");
         playerName = newName;
         name = newName;
     }
@@ -96,7 +86,7 @@ public class Player : NetworkBehaviour
     [Client]
     private void OnGUI()
     {
-        if (!isLocalPlayer) return;
+        if (!isLocalPlayer || GameManager.Singleton.currentGameState > GameManager.GameState.GameRunning) return;
         // if (_nameIsSet) return;
 
         var xpos = 30;
