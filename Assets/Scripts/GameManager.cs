@@ -38,8 +38,14 @@ public class GameManager : NetworkBehaviour
     public List<Button> localPlayerCardButtons;
     public Button dealCardsButton;
 
-    private Player _startingPlayer;
-    [SerializeField] public List<Button> preRoundButtons; 
+    private Player _startingPlayer; 
+    
+    public GameObject preRoundButtonPanel; 
+    public Button preRoundSauspielButton;
+    public Button preRoundSoloButton;
+    public Button preRoundWenzButton;
+    public Button preRoundWeiterButton;
+    
 
     #endregion
 
@@ -95,7 +101,6 @@ public class GameManager : NetworkBehaviour
         dealCardsButton.gameObject.SetActive(true);
         dealCardsButton.onClick.AddListener(EnterStatePreRound);
         // TODO: show scoreboard
-        // TODO: maybe ask each player to enter name only here & only once
     }
 
     /// <summary>

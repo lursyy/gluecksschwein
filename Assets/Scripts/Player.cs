@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Networking;
 using UnityEngine.UI;
@@ -7,10 +8,10 @@ public class Player : NetworkBehaviour
 {
     public GameManager.SyncListPlayingCard handCards = new GameManager.SyncListPlayingCard();
     private List<Button> _handButtons;
-
     public string playerName;
-    //private bool _nameIsSet;
 
+    #region Callbacks
+    
     public override void OnStartServer()
     {
         Debug.Log($"Player::OnStartServer: I am player {netId} on the server");
@@ -58,6 +59,10 @@ public class Player : NetworkBehaviour
         CmdPlayCard(handCards[index]);
     }
 
+    #endregion
+
+    #region Server Functions
+
     [Command]
     private void CmdPlayCard(PlayingCard.PlayingCardInfo handCard)
     {
@@ -73,7 +78,12 @@ public class Player : NetworkBehaviour
         name = newName;
         RpcSetUserName(newName);
     }
+    
+    #endregion
 
+    #region Client Functions
+
+        
     [ClientRpc]
     public void RpcSetUserName(string newName)
     {
@@ -87,7 +97,6 @@ public class Player : NetworkBehaviour
     private void OnGUI()
     {
         if (!isLocalPlayer || GameManager.Singleton.currentGameState > GameManager.GameState.GameRunning) return;
-        // if (_nameIsSet) return;
 
         var xpos = 30;
         var ypos = 100;
@@ -100,23 +109,71 @@ public class Player : NetworkBehaviour
         if (GUI.Button(new Rect(xpos, ypos, 200, 20), "Set Name"))
         {
             CmdSetUserName(playerName);
-            // _nameIsSet = true;
         }
     }
 
     [ClientRpc]
     public void RpcDisplayPreRoundButtons()
     {
-        // only do this on the client that is controlling this player
-        if (!isLocalPlayer) {return;}
+        // are we on the client that is controlling this player? otherwise, stop here
+        if (!isLocalPlayer) { return; }
         
         Debug.Log($"{nameof(Player)}::{nameof(RpcDisplayPreRoundButtons)}:" +
                   $"client {netId} was asked to display the preRound buttons");
         
-        foreach (Button preRoundButton in GameManager.Singleton.preRoundButtons)
-        {
-            preRoundButton.gameObject.SetActive(true);
-            // TODO provide onClick listener
-        }
+        // make the button panel visible
+        GameManager.Singleton.preRoundButtonPanel.gameObject.SetActive(true);
+
+        // (the onClick Listeners are already hooked up via the inspector)
     }
+
+    [Client]
+    public void PreRoundOnChooseSauSpiel()
+    {
+        if (!isLocalPlayer) { return; }
+        RemovePreRoundButtons();
+        
+        throw new NotImplementedException();
+    }
+
+    [Client]
+    public void PreRoundOnChooseSolo()
+    {
+        if (!isLocalPlayer) { return; }
+        RemovePreRoundButtons();
+
+        throw new NotImplementedException();
+    }
+
+    [Client]
+    public void PreRoundOnChooseWenz()
+    {
+        if (!isLocalPlayer) { return; }
+        RemovePreRoundButtons();
+
+        throw new NotImplementedException();
+    }
+
+    [Client]
+    public void PreRoundOnChooseWeiter()
+    {
+        if (!isLocalPlayer) { return; }
+        RemovePreRoundButtons();
+
+        throw new NotImplementedException();
+    }
+
+    private void RemovePreRoundButtons()
+    {
+        // disable button panel again
+        GameManager.Singleton.preRoundButtonPanel.SetActive(false);
+        
+        // remove all onclick listeners, so we don't get notified when another player clicks these buttons
+        // TODO I think we don't need to do that because the buttons are only displayed for one player at a time
+        
+    }
+
+    
+
+    #endregion
 }
