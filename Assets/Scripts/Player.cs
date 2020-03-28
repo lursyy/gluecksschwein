@@ -1,6 +1,5 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Events;
 using UnityEngine.Networking;
 using UnityEngine.UI;
 
@@ -21,15 +20,18 @@ public class Player : NetworkBehaviour
     public override void OnStartClient()
     {
         Debug.Log($"Player::OnStartClient: I am player {netId} on the client");
-        // _handButtons = GameManager.Singleton.localPlayerCardButtons;
-        // UpdateButtons();
     }
-    
+
     public override void OnStartLocalPlayer()
     {
         Debug.Log($"Player::OnStartLocalPlayer: I am player {netId} on the local player");
         // GameManager.Singleton.localPlayer = this;
         _handButtons = GameManager.Singleton.localPlayerCardButtons;
+        
+        // set default name
+        // (this is not reflected for the gameObject names on the clients)
+        // TODO ask all players to enter name ONCE before starting the first round
+        CmdSetUserName($"Spieler {netId.Value-1}");
     }
 
     private void Awake()
@@ -37,7 +39,6 @@ public class Player : NetworkBehaviour
         handCards.Callback = OnSyncListHandCardsChanged;
     }
 
-    
     private void OnSyncListHandCardsChanged(SyncList<PlayingCard.PlayingCardInfo>.Operation op, int index)
     {
         if (isLocalPlayer)
@@ -86,40 +87,11 @@ public class Player : NetworkBehaviour
     [ClientRpc]
     private void RpcSetUserName(string newName)
     {
+        // if (!isLocalPlayer) {return;}
+        Debug.Log($"Player {netId} was asked to change name");
         playerName = newName;
         name = newName;
     }
-
-    // [Command]
-    // public void CmdDrawHand(GameManager.SyncListCardDeck hand)
-    // {
-    //     handCards = hand;
-    //     Debug.Log($"Player::CmdDrawHand: (Server) player {netId} drawing cards " +
-    //               $"{string.Join(", ", handCards)}");
-    // }
-    //
-    // [ClientRpc]
-    // public void RpcDrawHand(GameManager.SyncListCardDeck hand)
-    // {
-    //     if (!isLocalPlayer)
-    //     {
-    //         Debug.Log($"Player::RpcDrawHand: Player {netId} is not localPlayer. Doing nothing.");
-    //         return;
-    //     }
-    //
-    //     handCards = hand;
-    //     Debug.Log(
-    //         $"Player::RpcDrawHand: I am client {netId}. isLocalPlayer={isLocalPlayer}, hasAuthority={hasAuthority}, localPlayerAuthority={localPlayerAuthority}." +
-    //         $"Now drawing cards {string.Join(", ", handCards)}");
-    //
-    //     // we are on the client, so we will try to use the buttons that we accessed in OnStartLocalPlayer
-    //     //Debug.Log($"We have {_handButtons.Count} buttons available");
-    //
-    //     for (int i = 0; i < hand.Count; i++)
-    //     {
-    //         _handButtons[i].image.sprite = PlayingCard.SpriteDict[handCards[i]];
-    //     }
-    // }
 
     [Client]
     private void OnGUI()
@@ -139,6 +111,22 @@ public class Player : NetworkBehaviour
         {
             CmdSetUserName(playerName);
             // _nameIsSet = true;
+        }
+    }
+
+    [ClientRpc]
+    public void RpcDisplayPreRoundButtons()
+    {
+        // only do this on the client that is controlling this player
+        if (!isLocalPlayer) {return;}
+        
+        Debug.Log($"{nameof(Player)}::{nameof(RpcDisplayPreRoundButtons)}:" +
+                  $"client {netId} was asked to display the preRound buttons");
+        
+        foreach (Button preRoundButton in GameManager.Singleton.preRoundButtons)
+        {
+            preRoundButton.gameObject.SetActive(true);
+            // TODO provide onClick listener
         }
     }
 }
