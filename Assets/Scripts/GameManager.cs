@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Reflection;
 using UnityEngine;
 using UnityEngine.Networking;
 using UnityEngine.UI;
@@ -23,7 +24,7 @@ public class GameManager : NetworkBehaviour
                         // TODO maybe we don't need RoundFinished and can just enter GameRunning instead
     }
 
-    [SyncVar] public GameState currentGameState;
+    [field: SyncVar] public GameState CurrentGameState { get; set; }
 
     [SyncVar(hook = nameof(OnGameStateTextChanged))] [SerializeField]
     private string gameStateText;
@@ -32,7 +33,9 @@ public class GameManager : NetworkBehaviour
     
     public enum RoundMode
     {
-        Sauspiel,
+        SauspielBlatt,
+        SauspielEichel,
+        SauspielSchelln,
         Solo,
         Wenz,
         Ramsch
@@ -40,7 +43,9 @@ public class GameManager : NetworkBehaviour
     
     public enum PreRoundChoice
     {
-        Sauspiel,
+        SauspielBlatt,
+        SauspielEichel,
+        SauspielSchelln,
         Solo,
         Wenz,
         Weiter
@@ -49,19 +54,19 @@ public class GameManager : NetworkBehaviour
     #endregion
 
     #region Player Management
-
+    
+    [Header("Players")]
     public List<Player> players = new List<Player>();
     public List<Button> localPlayerCardButtons;
     public Button dealCardsButton;
-
     private Player _startingPlayer; 
     
+    [Header("Pre-Round")]
     public GameObject preRoundButtonPanel; 
-    public Button preRoundSauspielButton;
+    public Dropdown preRoundSauspielDropdown;
     public Button preRoundSoloButton;
     public Button preRoundWenzButton;
     public Button preRoundWeiterButton;
-    
 
     #endregion
 
@@ -93,7 +98,7 @@ public class GameManager : NetworkBehaviour
     /// </summary>
     private void EnterStateWaiting()
     {
-        currentGameState = GameState.Waiting;
+        CurrentGameState = GameState.Waiting;
     }
 
     /// <summary>
@@ -104,14 +109,14 @@ public class GameManager : NetworkBehaviour
     private void EnterStateGameRunning()
     {
         // check previous game state
-        if (currentGameState == GameState.Waiting)
+        if (CurrentGameState == GameState.Waiting)
         {
             // set starting player to the last one so that before the first round the player 0 gets selected
             _startingPlayer = players[3];
         }
 
         // update the game state
-        currentGameState = GameState.GameRunning;
+        CurrentGameState = GameState.GameRunning;
 
         gameStateText = "Bereit zum spielen";
         dealCardsButton.gameObject.SetActive(true);
@@ -128,7 +133,7 @@ public class GameManager : NetworkBehaviour
     private void EnterStatePreRound()
     {
         // update the game state
-        currentGameState = GameState.PreRound;
+        CurrentGameState = GameState.PreRound;
 
         // deal the cards to the players
         DealCards();
@@ -150,7 +155,7 @@ public class GameManager : NetworkBehaviour
     /// </summary>
     private void EnterStateRoundSau()
     {
-        currentGameState = GameState.RoundSau;
+        CurrentGameState = GameState.RoundSau;
     }
 
     /// <summary>
@@ -158,7 +163,7 @@ public class GameManager : NetworkBehaviour
     /// </summary>
     private void EnterStateRoundSolo()
     {
-        currentGameState = GameState.RoundSolo;
+        CurrentGameState = GameState.RoundSolo;
     }
 
     /// <summary>
@@ -166,7 +171,7 @@ public class GameManager : NetworkBehaviour
     /// </summary>
     private void EnterStateRoundWenz()
     {
-        currentGameState = GameState.RoundWenz;
+        CurrentGameState = GameState.RoundWenz;
     }
 
     /// <summary>
@@ -174,7 +179,7 @@ public class GameManager : NetworkBehaviour
     /// </summary>
     private void EnterStateRoundRamsch()
     {
-        currentGameState = GameState.RoundRamsch;
+        CurrentGameState = GameState.RoundRamsch;
     }
 
     /// <summary>
@@ -182,7 +187,7 @@ public class GameManager : NetworkBehaviour
     /// </summary>
     private void EnterStateRoundFinished()
     {
-        currentGameState = GameState.RoundFinished;
+        CurrentGameState = GameState.RoundFinished;
     }
 
     private Player SelectNextStartingPlayer()
@@ -202,8 +207,12 @@ public class GameManager : NetworkBehaviour
     [Command]
     public void CmdSelectPreRoundChoice(NetworkInstanceId playerId, PreRoundChoice playerChoice)
     {
-        Debug.Log($"{nameof(GameManager)}::{nameof(CmdSelectPreRoundChoice)}: player {playerId} chose {playerChoice}");
+        Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
+                  $"player {playerId} chose {playerChoice}");
+        
         // TODO compute remaining options for other players
+        
+        
         // TODO display buttons to the next player
         throw new NotImplementedException();
     }
@@ -233,7 +242,8 @@ public class GameManager : NetworkBehaviour
     [Command]
     public void CmdPlayCard(PlayingCard.PlayingCardInfo cardInfo)
     {
-        Debug.Log($"GameManager::CmdPlayCard: someone wants me (the server) to play {cardInfo}");
+        Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
+                  $"someone wants me (the server) to play {cardInfo}");
 
         // add the card to the played cards
         _playedCards.Add(cardInfo);
@@ -242,7 +252,8 @@ public class GameManager : NetworkBehaviour
     [Server]
     public void AddPlayer(Player player)
     {
-        Debug.Log($"GameManager::AddPlayer called, adding Player {player.netId}");
+        Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
+                  $"adding Player {player.netId}");
         players.Add(player);
         
         gameStateText = $"Warte auf Spieler... ({players.Count})";
@@ -263,8 +274,8 @@ public class GameManager : NetworkBehaviour
         int handedCards = 0;
         foreach (Player player in players)
         {
-            Debug.Log($"GameManager::CmdDealCards: Player {player.netId} should get " +
-                      $"cards {handedCards} to {handedCards + 7}");
+            Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
+                      $"Player {player.netId} should get cards {{handedCards}} to {{handedCards + 7}}");
             // this updates the player's cards on the server object, which then notifies his respective client object
             for (int i = handedCards; i < handedCards + 8; i++)
             {
@@ -281,7 +292,8 @@ public class GameManager : NetworkBehaviour
 
     private void OnCardPlayed(SyncList<PlayingCard.PlayingCardInfo>.Operation op, int i)
     {
-        Debug.Log($"GameManager::OnCardPlayed: the server notified me that {_playedCards[i]} was played");
+        Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
+                  $"the server notified me that {_playedCards[i]} was played");
 
         // put the correct image in the position of the just played card
         playedCardSlots[i].SetActive(true);
@@ -290,7 +302,8 @@ public class GameManager : NetworkBehaviour
 
     void OnGameStateTextChanged(string newText)
     {
-        Debug.Log($"GameManager::{nameof(OnGameStateTextChanged)}: new text = \"{gameStateText}\"");
+        Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
+                  $"new text = \"{gameStateText}\"");
         gameStateText = newText;
         gameStateTextField.text = gameStateText;
     }
