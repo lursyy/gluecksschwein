@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
 using UnityEngine.Networking;
@@ -14,17 +13,17 @@ public class GameManager : NetworkBehaviour
     public enum GameState
     {
         Waiting,        // Waiting until 4 players are connected 
-        GameRunning,    // 4 players are connected, host can click button to deal cards
+        GameRunning,    // 4 players are connected, players can enter names, host can click button to deal cards
         PreRound,       // Players take turns deciding the game mode, i.e. Sauspiel, Solo, etc.
-        RoundSau,       // Active during a round of Sauspiel
-        RoundSolo,      // Active during a round of Solo
-        RoundWenz,      // Active during a round of Wenz
-        RoundRamsch,    // Active during a round of Ramsch
+        Round,          // Active during a round (use in combination with CurrentRoundMode)
         RoundFinished   // We enter this state after the last "Stich". Here we can show/count scores
-                        // TODO maybe we don't need RoundFinished and can just enter GameRunning instead
     }
 
-    [field: SyncVar] public GameState CurrentGameState { get; set; }
+    [field: SyncVar] public GameState CurrentGameState { get; private set; }
+    [field: SyncVar] public RoundMode CurrentRoundMode { get; private set; }
+
+    private Dictionary<NetworkInstanceId, PreRoundChoice> CurrentPreRoundChoices { get; } =
+        new Dictionary<NetworkInstanceId, PreRoundChoice>();
 
     [SyncVar(hook = nameof(OnGameStateTextChanged))] [SerializeField]
     private string gameStateText;
@@ -33,22 +32,22 @@ public class GameManager : NetworkBehaviour
     
     public enum RoundMode
     {
+        Ramsch,
         SauspielBlatt,
         SauspielEichel,
         SauspielSchelln,
         Solo,
         Wenz,
-        Ramsch
     }
     
     public enum PreRoundChoice
     {
+        Weiter,
         SauspielBlatt,
         SauspielEichel,
         SauspielSchelln,
         Solo,
         Wenz,
-        Weiter
     }
 
     #endregion
@@ -82,7 +81,8 @@ public class GameManager : NetworkBehaviour
     
     [SerializeField] private List<GameObject> playedCardSlots;
     private readonly SyncListPlayingCard _playedCards = new SyncListPlayingCard();
-    
+    private Player _currentPreRoundDecider;
+
     #endregion
 
     
@@ -134,6 +134,7 @@ public class GameManager : NetworkBehaviour
     {
         // update the game state
         CurrentGameState = GameState.PreRound;
+        gameStateText = "Runde vorbereiten...";
 
         // deal the cards to the players
         DealCards();
@@ -142,46 +143,33 @@ public class GameManager : NetworkBehaviour
         dealCardsButton.gameObject.SetActive(false);
 
         // update the starting player
-        _startingPlayer = SelectNextStartingPlayer();
-
-        Player currentPreRoundDecider = _startingPlayer;
-
+        _startingPlayer = players.CycleNext(_startingPlayer);
+        
+        // set the current pre round decider to be the starting player
+        _currentPreRoundDecider = _startingPlayer;
+        
+        // reset the Round Mode
+        CurrentRoundMode = RoundMode.Ramsch;
+        
+        // reset the player choices
+        CurrentPreRoundChoices.Clear();
+        
         // Display the Pre Round Buttons for the currently deciding player
-        currentPreRoundDecider.RpcDisplayPreRoundButtons();
+        _currentPreRoundDecider.RpcDisplayPreRoundButtons(CurrentRoundMode);
     }
-
+    
     /// <summary>
-    /// Used to enter the "RoundSau" state
+    /// Used to enter the "Round" state
     /// </summary>
-    private void EnterStateRoundSau()
+    private void EnterStateRound()
     {
-        CurrentGameState = GameState.RoundSau;
+        CurrentGameState = GameState.Round;
+        gameStateText = $"Runde läuft ({CurrentRoundMode})";
+        
+        Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
+                  $"entering round with {nameof(CurrentRoundMode)}={CurrentRoundMode}.");
     }
-
-    /// <summary>
-    /// Used to enter the "RoundSolo" state
-    /// </summary>
-    private void EnterStateRoundSolo()
-    {
-        CurrentGameState = GameState.RoundSolo;
-    }
-
-    /// <summary>
-    /// Used to enter the "RoundWenz" state
-    /// </summary>
-    private void EnterStateRoundWenz()
-    {
-        CurrentGameState = GameState.RoundWenz;
-    }
-
-    /// <summary>
-    /// Used to enter the "RoundRamsch" state
-    /// </summary>
-    private void EnterStateRoundRamsch()
-    {
-        CurrentGameState = GameState.RoundRamsch;
-    }
-
+    
     /// <summary>
     /// Used to enter the "Round Finished" state
     /// </summary>
@@ -190,31 +178,38 @@ public class GameManager : NetworkBehaviour
         CurrentGameState = GameState.RoundFinished;
     }
 
-    private Player SelectNextStartingPlayer()
-    {
-        // gib mir den index des aktuellen _startingPlayers
-        int lastStartingPlayerIndex = players.IndexOf(_startingPlayer);
-
-        int newStartingPlayerIndex = lastStartingPlayerIndex + 1;
-        if (newStartingPlayerIndex == 4)
-        {
-            newStartingPlayerIndex = 0;
-        }
-
-        return players[newStartingPlayerIndex];
-    }
-
     [Command]
-    public void CmdSelectPreRoundChoice(NetworkInstanceId playerId, PreRoundChoice playerChoice)
+    public void CmdHandlePreRoundChoice(NetworkInstanceId playerId, PreRoundChoice playerChoice)
     {
         Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
                   $"player {playerId} chose {playerChoice}");
         
-        // TODO compute remaining options for other players
+        // Now we compute the remaining options for next player
+        ///////////////////////////////////////////////////////
+         
+        // we can essentially set the round mode to the player's choice, we only chooses from the remaining (legal) choices
+        // BUT... this does not apply for "Weiter": if the player chose "Weiter", we don't change the round mode
+        if (playerChoice != PreRoundChoice.Weiter) 
+        {
+            CurrentRoundMode = (RoundMode) playerChoice;
+        }
+
+        // maybe we want to show the choices to all players at some point
+        CurrentPreRoundChoices[playerId] = playerChoice;
+
+        bool preRoundFinished = playerChoice == PreRoundChoice.Wenz || CurrentPreRoundChoices.Count == players.Count;
         
-        
-        // TODO display buttons to the next player
-        throw new NotImplementedException();
+        if (preRoundFinished)
+        {
+            // we don't have to do anything else here: the CurrentRoundMode is already set correctly (including Ramsch)
+            EnterStateRound();
+        }
+        else 
+        {
+            // otherwise display buttons to the next player
+            _currentPreRoundDecider = players.CycleNext(_currentPreRoundDecider);
+            _currentPreRoundDecider.RpcDisplayPreRoundButtons(CurrentRoundMode);
+        }
     }
     
     #endregion
@@ -300,7 +295,7 @@ public class GameManager : NetworkBehaviour
         playedCardSlots[i].GetComponent<Image>().sprite = PlayingCard.SpriteDict[_playedCards[i]];
     }
 
-    void OnGameStateTextChanged(string newText)
+    private void OnGameStateTextChanged(string newText)
     {
         Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
                   $"new text = \"{gameStateText}\"");

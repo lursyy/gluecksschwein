@@ -91,7 +91,7 @@ public class Player : NetworkBehaviour
     {
         Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
                   $"player {netId} sending choice {choice} to the GameManager");
-        GameManager.Singleton.CmdSelectPreRoundChoice(netId, choice);
+        GameManager.Singleton.CmdHandlePreRoundChoice(netId, choice);
     }
 
     #endregion
@@ -129,72 +129,110 @@ public class Player : NetworkBehaviour
     }
 
     [ClientRpc]
-    public void RpcDisplayPreRoundButtons()
+    public void RpcDisplayPreRoundButtons(GameManager.RoundMode currentRoundMode)
     {
         // are we on the client that is controlling this player? otherwise, stop here
         if (!isLocalPlayer) { return; }
         
         Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
-                  $"client {netId} was asked to display the preRound buttons");
+                  $"client {netId} was asked to display the preRound buttons, {nameof(currentRoundMode)}={currentRoundMode}");
         
         // make the button panel visible
         GameManager.Singleton.preRoundButtonPanel.gameObject.SetActive(true);
-
+        
+        // disable specific buttons depending on the current game mode
+        switch (currentRoundMode)
+        {
+            case GameManager.RoundMode.Ramsch:
+            {
+                // for ramsch we don't disable any button
+                break;
+            }
+            case GameManager.RoundMode.SauspielBlatt:
+            case GameManager.RoundMode.SauspielEichel:
+            case GameManager.RoundMode.SauspielSchelln:
+            {
+                GameManager.Singleton.preRoundSauspielDropdown.interactable = false;
+                break;
+            }
+            case GameManager.RoundMode.Solo:
+            {
+                GameManager.Singleton.preRoundSauspielDropdown.interactable = false;
+                GameManager.Singleton.preRoundSoloButton.interactable = false;
+                break;
+            }
+            case GameManager.RoundMode.Wenz:
+            {
+                throw new InvalidOperationException(
+                    $"player {netId} has no choices (round mode = Wenz) but was asked to make one");
+            }
+            default:
+            {
+                throw new ArgumentOutOfRangeException();
+            }
+        }
+        
         GameManager.Singleton.preRoundSauspielDropdown.onValueChanged.AddListener(OnPreRoundChooseSauSpiel);
         GameManager.Singleton.preRoundSoloButton.onClick.AddListener(OnPreRoundChooseSolo);
         GameManager.Singleton.preRoundWenzButton.onClick.AddListener(OnPreRoundChooseWenz);
         GameManager.Singleton.preRoundWeiterButton.onClick.AddListener(OnPreRoundChooseWeiter);
     }
 
-    public void OnPreRoundChooseSauSpiel(int sauChoiceInt)
+    private void OnPreRoundChooseSauSpiel(int sauChoiceInt)
     {
         if (!isLocalPlayer) { return; }
         
-        GameManager.PreRoundChoice sauChoice = (GameManager.PreRoundChoice) (sauChoiceInt - 1);
+        // do nothing if the player clicked the first dropdown item (which simply says "Sauspiel...")
+        if (sauChoiceInt == 0) { return; }
         
-        Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
-                  $"Player {netId} chose Sauspiel {sauChoice}");
+        // otherwise, convert the clicked item index into a choice
+        GameManager.PreRoundChoice sauChoice = (GameManager.PreRoundChoice) sauChoiceInt;
         
-        RemovePreRoundButtons();
+        HidePreRoundButtons();
         CmdSelectPreRoundChoice(sauChoice);
     }
 
     [Client]
-    public void OnPreRoundChooseSolo()
+    private void OnPreRoundChooseSolo()
     {
         if (!isLocalPlayer) { return; }
-        RemovePreRoundButtons();
-
-        throw new NotImplementedException();
+        HidePreRoundButtons();
+        CmdSelectPreRoundChoice(GameManager.PreRoundChoice.Solo);
     }
 
     [Client]
-    public void OnPreRoundChooseWenz()
+    private void OnPreRoundChooseWenz()
     {
         if (!isLocalPlayer) { return; }
-        RemovePreRoundButtons();
-
-        throw new NotImplementedException();
+        HidePreRoundButtons();
+        CmdSelectPreRoundChoice(GameManager.PreRoundChoice.Wenz);
     }
 
     [Client]
-    public void OnPreRoundChooseWeiter()
+    private void OnPreRoundChooseWeiter()
     {
         if (!isLocalPlayer) { return; }
-        RemovePreRoundButtons();
-
-        throw new NotImplementedException();
+        HidePreRoundButtons();
+        CmdSelectPreRoundChoice(GameManager.PreRoundChoice.Weiter);
     }
 
     [Client]
-    private void RemovePreRoundButtons()
+    private void HidePreRoundButtons()
     {
-        // disable button panel again
-        GameManager.Singleton.preRoundButtonPanel.SetActive(false);
+        if (!isLocalPlayer) { return; }
+        
+        // disable the button panel
+        GameManager.Singleton.preRoundButtonPanel.gameObject.SetActive(false);
+
+        // reset all the buttons to their active state (we disable the ones we don't want in RcpDisplayPreRoundButtons)
+        GameManager.Singleton.preRoundSauspielDropdown.interactable = true;
+        GameManager.Singleton.preRoundSoloButton.interactable = true;
         
         // remove all onclick listeners, so we don't get notified when another player clicks these buttons
-        // TODO I think we don't need to do that because the buttons are only displayed for one player at a time
-        
+        GameManager.Singleton.preRoundSauspielDropdown.onValueChanged.RemoveListener(OnPreRoundChooseSauSpiel);
+        GameManager.Singleton.preRoundSoloButton.onClick.RemoveListener(OnPreRoundChooseSolo);
+        GameManager.Singleton.preRoundWenzButton.onClick.RemoveListener(OnPreRoundChooseWenz);
+        GameManager.Singleton.preRoundWeiterButton.onClick.RemoveListener(OnPreRoundChooseWeiter);
     }
     
     #endregion
