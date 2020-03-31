@@ -39,7 +39,7 @@ public class Player : NetworkBehaviour
 
         // set default name
         // (this is not reflected for the gameObject names on the clients)
-        CmdSetUserName($"Spieler {netId}");
+        CmdSetUserName($"Spieler {netId.Value-1}");
     }
 
     private void Awake()
@@ -70,6 +70,8 @@ public class Player : NetworkBehaviour
     [Client]
     private void OnGUI()
     {
+        // TODO display player name during game
+        
         if (!isLocalPlayer || GameManager.Singleton.CurrentGameState > GameManager.GameState.GameRunning) return;
 
         const int xPos = 30;

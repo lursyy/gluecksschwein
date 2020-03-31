@@ -276,8 +276,8 @@ public class GameManager : NetworkBehaviour
         else
         {
             // initiate the next player's turn
-            _gameStateText = $"Runde läuft ({CurrentRoundMode})\n{_currentTurnPlayer.playerName} ist dran";
             _currentTurnPlayer = _players.CycleNext(_currentTurnPlayer);
+            _gameStateText = $"Runde läuft ({CurrentRoundMode})\n{_currentTurnPlayer.playerName} ist dran";
             _currentTurnPlayer.RpcStartTurn();
         }
         
