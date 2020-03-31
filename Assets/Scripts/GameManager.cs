@@ -177,10 +177,8 @@ public class GameManager : NetworkBehaviour
                   $"entering round with {nameof(CurrentRoundMode)}={CurrentRoundMode}.");
         
         CurrentGameState = GameState.Round;
-        
-        // make sure it's the starting player's turn
         _currentTurnPlayer = _roundStartingPlayer;
-        
+        _completedStiches.Clear();
         StartStich();
     }
     
@@ -190,6 +188,10 @@ public class GameManager : NetworkBehaviour
     private void EnterStateRoundFinished()
     {
         CurrentGameState = GameState.RoundFinished;
+        Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
+                  $"Round finished!");
+        
+        // TODO show scoreboard?
     }
 
     [Command]
@@ -321,7 +323,6 @@ public class GameManager : NetworkBehaviour
     private void StartStich()
     {
         // clear the stiches table and the current stich
-        _completedStiches.Clear();
         _currentStich.Clear();
 
         // notify the current player that it's their turn
@@ -355,8 +356,8 @@ public class GameManager : NetworkBehaviour
         foreach (Player player in players)
         {
             Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
-                      $"Player {player.netId} should get cards {{handedCards}} to {{handedCards + 7}}");
-            // this updates the player's cards on the server object, which then notifies his respective client object
+                      $"Player {player.netId} should get cards {handedCards} to {handedCards + 7}");
+            // this updates a SyncList on the player server object, which then notifies his respective client object
             for (int i = handedCards; i < handedCards + 8; i++)
             {
                 player.handCards.Add(_syncListCardDeck[i]);
