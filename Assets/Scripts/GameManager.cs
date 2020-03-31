@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
@@ -71,9 +72,6 @@ public class GameManager : NetworkBehaviour
 
     #region (Pre-) Round Management
 
-    [SerializeField] private readonly Image[] _playedCardSlots = new Image[4];
-    private readonly SyncListPlayingCard _currentStich = new SyncListPlayingCard();
-    
     /// <summary>
     /// Relevant for both PreRound and Round.
     /// </summary>
@@ -88,10 +86,12 @@ public class GameManager : NetworkBehaviour
 
     private Player _roundStartingPlayer;
     
-    /// <summary>
-    /// A Stich consists of 4 cards, and there are 8 Stichs in a Round
-    /// </summary>
-    private readonly PlayingCard.PlayingCardInfo[,] _completedStichs = new PlayingCard.PlayingCardInfo[8,4];
+    [SerializeField] private Image[] playedCardSlots = new Image[4];
+
+    private readonly SyncListPlayingCard _currentStich = new SyncListPlayingCard();
+
+    // public class SyncListStich : SyncListStruct<PlayingCard.Stich> {}
+    private readonly List<PlayingCard.Stich> _completedStiches = new List<PlayingCard.Stich>();
 
     #endregion
 
@@ -177,15 +177,11 @@ public class GameManager : NetworkBehaviour
                   $"entering round with {nameof(CurrentRoundMode)}={CurrentRoundMode}.");
         
         CurrentGameState = GameState.Round;
+        
         // make sure it's the starting player's turn
         _currentTurnPlayer = _roundStartingPlayer;
-
-        // clear the Stich table
-        Array.Clear(_completedStichs, 0, _completedStichs.Length);
         
-        // notify the player that it's their turn
-        _currentTurnPlayer.RpcStartTurn();
-        gameStateText = $"Runde läuft ({CurrentRoundMode})\n{_currentTurnPlayer.playerName} ist dran";
+        StartStich();
     }
     
     /// <summary>
@@ -237,7 +233,7 @@ public class GameManager : NetworkBehaviour
     {
         Singleton = this;
         _cardDeck = PlayingCard.InitializeCardDeck();
-        _currentStich.Callback = OnPlayedCardsChanged;
+        _currentStich.Callback = OnStichCardsChanged;
     }
 
     public override void OnStartServer()
@@ -260,11 +256,79 @@ public class GameManager : NetworkBehaviour
 
         // add the card to the played cards
         _currentStich.Add(cardInfo);
+
+        bool stichComplete = _currentStich.Count == 4;
         
-        // append the card to the stich table
+        if (stichComplete)
+        {
+            OnStichCompleted();
+        }
+        else
+        {
+            // initiate the next player's turn
+            gameStateText = $"Runde läuft ({CurrentRoundMode})\n{_currentTurnPlayer.playerName} ist dran";
+            _currentTurnPlayer = players.CycleNext(_currentTurnPlayer);
+            _currentTurnPlayer.RpcStartTurn();
+        }
+        
         
     }
-    
+
+    [Server]
+    private void OnStichCompleted()
+    {
+        PlayingCard.Stich currentStichStruct = new PlayingCard.Stich();
+        currentStichStruct.AddAll(_currentStich.ToArray());
+
+        // determine who won the stich
+        PlayingCard.PlayingCardInfo winningCard = currentStichStruct.CalculateWinningCard();
+        Player winningPlayer = players.Cycle(_currentTurnPlayer, _currentStich.IndexOf(winningCard));
+        
+        // let the players know
+        gameStateText = $"{winningPlayer.playerName} gewinnt mit {winningCard}!";
+        
+        // add the stich to the completed stiches
+        _completedStiches.Add(currentStichStruct);
+        
+        // the winning player starts with the next stich
+        _currentTurnPlayer = winningPlayer;
+        
+        // finish the stich after a small delay, so that everyone can understand what happened
+        StartCoroutine(StartNextStichWithDelay(3));
+    }
+
+    [Server]
+    private IEnumerator StartNextStichWithDelay(int seconds)
+    {
+        // wait for the specified amount of time
+        yield return new WaitForSeconds(seconds);
+
+        Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
+                  $"Finished Stich {_completedStiches.Count}");
+
+        bool roundFinished = _completedStiches.Count == 8;
+        if (roundFinished)
+        {
+            EnterStateRoundFinished();
+        }
+        else
+        {
+            StartStich();
+        }
+    }
+
+    [Server]
+    private void StartStich()
+    {
+        // clear the stiches table and the current stich
+        _completedStiches.Clear();
+        _currentStich.Clear();
+
+        // notify the current player that it's their turn
+        _currentTurnPlayer.RpcStartTurn();
+        gameStateText = $"Runde läuft ({CurrentRoundMode})\n{_currentTurnPlayer.playerName} ist dran";
+    }
+
     [Server]
     public void AddPlayer(Player player)
     {
@@ -306,7 +370,7 @@ public class GameManager : NetworkBehaviour
 
     #region SyncVar Callbacks/Hooks
 
-    private void OnPlayedCardsChanged(SyncList<PlayingCard.PlayingCardInfo>.Operation op, int i)
+    private void OnStichCardsChanged(SyncList<PlayingCard.PlayingCardInfo>.Operation op, int i)
     {
         switch (op)
         {
@@ -315,11 +379,11 @@ public class GameManager : NetworkBehaviour
                           $"the server notified me that {_currentStich[i]} was played");
 
                 // put the correct image in the position of the just played card
-                _playedCardSlots[i].gameObject.SetActive(true);
-                _playedCardSlots[i].sprite = PlayingCard.SpriteDict[_currentStich[i]];
+                playedCardSlots[i].gameObject.SetActive(true);
+                playedCardSlots[i].sprite = PlayingCard.SpriteDict[_currentStich[i]];
                 break;
             case SyncList<PlayingCard.PlayingCardInfo>.Operation.OP_CLEAR:
-                foreach (var cardSlot in _playedCardSlots)
+                foreach (var cardSlot in playedCardSlots)
                 {
                     cardSlot.gameObject.SetActive(false);
                     cardSlot.sprite = PlayingCard.DefaultCardSprite;

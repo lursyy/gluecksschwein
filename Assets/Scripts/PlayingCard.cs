@@ -38,6 +38,48 @@ public static class PlayingCard
         Ass
     }
     #endregion
+
+    #region Stich Definition
+
+    public struct Stich
+    {
+        private PlayingCardInfo[] _cards;
+        public int CardCount { get; private set; }
+
+        public bool IsComplete => CardCount == 4;
+        // TODO maybe add the winning player id here? And / Or the points the stich is worth?
+
+        public void AddCard(PlayingCardInfo card)
+        {
+            if (IsComplete)
+            {
+                throw new InvalidOperationException("Stich already complete, cannot add card");
+            }
+            
+            if (_cards == null)
+            {
+                _cards = new PlayingCardInfo[4];
+            }
+            
+            _cards[CardCount] = card;
+            CardCount++;
+        }
+
+        public void AddAll(PlayingCardInfo[] cards)
+        {
+            foreach (PlayingCardInfo card in cards)
+            {
+                AddCard(card);
+            }
+        }
+
+        public PlayingCardInfo GetCard(int index)
+        {
+            return _cards[index];
+        }
+    }
+
+    #endregion
     
     #region Static Variables and Helpers
     
