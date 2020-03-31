@@ -48,10 +48,9 @@ public static class Extensions
         }
         
         Debug.LogError($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}:" +
-                       $"Dummy calculation, simply picking random card");
+                       "Dummy calculation, simply picking random card");
 
-        // TODO actual implementation
-        // TODO add parameters that are necessary for this calculation, e.g. the current Trump Suit
+        // TODO actual implementation (add parameters that are necessary for calculation, e.g. current Trump Suit)
         int winningCardIndex = Rng.Next(3);
         PlayingCard.PlayingCardInfo winningCard = stich.GetCard(winningCardIndex);
 
@@ -66,7 +65,7 @@ public static class Extensions
         }
         
         Debug.LogError($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}:" +
-                       $"Dummy calculation, simply returning random number");
+                       "Dummy calculation, simply returning random number");
 
         int stichWorth = 0;
 
