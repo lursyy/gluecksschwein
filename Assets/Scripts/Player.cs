@@ -205,13 +205,24 @@ public class Player : NetworkBehaviour
     
     private void OnSyncListHandCardsChanged(SyncList<PlayingCard.PlayingCardInfo>.Operation op, int index)
     {
-        if (isLocalPlayer)
+        if (!isLocalPlayer) return;
+        
+        switch (op)
         {
-            // TODO check if list was cleared (via op)
-            Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
-                      $"Player {netId} was notified of a change in his hand: card {index}: {handCards[index]}");
-            _handButtons[index].image.sprite = PlayingCard.SpriteDict[handCards[index]];
+            case SyncList<PlayingCard.PlayingCardInfo>.Operation.OP_ADD:
+                Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
+                          $"Player {netId} was notified of new card at position {index}: {handCards[index]}");
+                _handButtons[index].image.sprite = PlayingCard.SpriteDict[handCards[index]];
+                break;
+            case SyncList<PlayingCard.PlayingCardInfo>.Operation.OP_CLEAR:
+                Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
+                          $"Player {netId} was notified of a cleared hand, changing all card to default image");
+                _handButtons.ForEach(button => button.image.sprite = PlayingCard.DefaultCardSprite);
+                break;
+            default:
+                throw new InvalidOperationException($"{nameof(op)}={op}");
         }
+
     }
 
     [Client]
