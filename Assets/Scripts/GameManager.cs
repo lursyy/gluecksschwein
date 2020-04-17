@@ -99,7 +99,7 @@ public class GameManager : NetworkBehaviour
     /// <summary>
     /// round groups share their points and "play together"
     /// </summary>
-    private readonly List<IEnumerable<Player>> _roundGroups = new List<IEnumerable<Player>>();
+    private List<IEnumerable<Player>> _roundGroups = new List<IEnumerable<Player>>();
     
     [SerializeField] private Image[] playedCardSlots = new Image[4];
 
@@ -221,7 +221,7 @@ public class GameManager : NetworkBehaviour
         _completedStiches.Clear();
 
         // find out who is playing with whom, for easy scoring later
-        CalculateRoundGroups();
+        _roundGroups = CalculateRoundGroups(CurrentPreRoundChoices, _players, CurrentRoundMode);
 
         StartStich();
     }
@@ -290,19 +290,21 @@ public class GameManager : NetworkBehaviour
     }
 
     [Server]
-    private void CalculateRoundGroups()
+    private static List<IEnumerable<Player>> CalculateRoundGroups(
+        IReadOnlyDictionary<NetworkInstanceId, PreRoundChoice> playerChoices,
+        List<Player> players,
+        RoundMode roundMode)
     {
-        // first, clear all the old round partners
-        _roundGroups.Clear();
+        List<IEnumerable<Player>> roundGroups = new List<IEnumerable<Player>>();
         
         // it all depends on the current round mode
-        switch (CurrentRoundMode)
+        switch (roundMode)
         {
             case RoundMode.Ramsch:
                 // everyone plays on their own, so each player is in a separate group
-                foreach (var player in _players)
+                foreach (var player in players)
                 {
-                    _roundGroups.Add(new List<Player> {player});
+                    roundGroups.Add(new List<Player> {player});
                 }
                 break;
             
@@ -310,39 +312,41 @@ public class GameManager : NetworkBehaviour
             case RoundMode.SauspielEichel:
             case RoundMode.SauspielSchelln:
                 // get the suit that correspond to the current mode
-                PlayingCard.Suit sauSuit = GetSauSuit(CurrentRoundMode);
+                PlayingCard.Suit sauSuit = GetSauSuit(roundMode);
                 
                 // find the player that has the respective Sau
-                Player sauOwner = _players.Find(player => player.handCards.Contains(
+                Player sauOwner = players.Find(player => player.handCards.Contains(
                     new PlayingCard.PlayingCardInfo(PlayingCard.Rank.Ass, sauSuit)
                     ));
 
                 // find the player that has decided to play for the Sau...
-                Player sauPlayer = _players.Find(player =>
-                    CurrentPreRoundChoices[player.netId] == (PreRoundChoice) CurrentRoundMode);
+                Player sauPlayer = players.Find(player =>
+                    playerChoices[player.netId] == (PreRoundChoice) roundMode);
 
                 // there are two groups, one with the above two players, and one with the other two
                 var sauGroup = new [] {sauOwner, sauPlayer};
-                _roundGroups.Add(sauGroup);
-                _roundGroups.Add(_players.Except(sauGroup)); 
+                roundGroups.Add(sauGroup);
+                roundGroups.Add(players.Except(sauGroup)); 
                 break;
             
             case RoundMode.Solo:
             case RoundMode.Wenz:
                 // the player who chose the solo/wenz is alone playing against the other 3 players
-                Player alonePlayer = _players.Find(player =>
-                    CurrentPreRoundChoices[player.netId] == (PreRoundChoice) CurrentRoundMode);
+                Player alonePlayer = players.Find(player =>
+                    playerChoices[player.netId] == (PreRoundChoice) roundMode);
                 var alonePlayerGroup = new [] {alonePlayer};
-                _roundGroups.Add(alonePlayerGroup);
-                _roundGroups.Add(_players.Except(alonePlayerGroup));
+                roundGroups.Add(alonePlayerGroup);
+                roundGroups.Add(players.Except(alonePlayerGroup));
                 
                 break;
             default:
                 throw new ArgumentOutOfRangeException();
         }
+
+        return roundGroups;
     }
 
-    private PlayingCard.Suit GetSauSuit(RoundMode roundMode)
+    private static PlayingCard.Suit GetSauSuit(RoundMode roundMode)
     {
         switch (roundMode)
         {
