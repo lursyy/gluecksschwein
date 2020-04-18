@@ -266,7 +266,7 @@ public class Player : NetworkBehaviour
         // enable the card buttons
         _handButtons.ForEach(button => button.interactable = true);
     }
-    
+
     #endregion
 
 }

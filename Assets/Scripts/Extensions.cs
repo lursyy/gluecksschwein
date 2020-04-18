@@ -80,4 +80,34 @@ public static class Extensions
         
         return stichWorth;
     }
+
+    public struct ScoreBoardRow
+    {
+        private int _entryCount;
+        
+        public class ScoreBoardEntry
+        {
+            public readonly string name;
+            public readonly int score;
+
+            internal ScoreBoardEntry(string name, int score)
+            {
+                this.name = name;
+                this.score = score;
+            }
+        }
+
+        public ScoreBoardEntry[] Entries { get; }
+
+        public void AddEntry(string name, int score)
+        {
+            if (_entryCount == 4)
+            {
+                throw new InvalidOperationException("Already 4 entries in row");
+            }
+            
+            Entries[_entryCount] = new ScoreBoardEntry(name, score);
+            _entryCount++;
+        }
+    }
 }
