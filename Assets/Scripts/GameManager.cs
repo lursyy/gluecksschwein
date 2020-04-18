@@ -11,7 +11,7 @@ using UnityEngine.UI;
 [RequireComponent(typeof(AudioSource))]
 public class GameManager : NetworkBehaviour
 {
-    public static GameManager Singleton;
+    public static GameManager Singleton { get; private set; }
 
     #region Changeable Constants
 
@@ -35,8 +35,8 @@ public class GameManager : NetworkBehaviour
     [field: SyncVar] public GameState CurrentGameState { get; private set; }
     [field: SyncVar] private RoundMode CurrentRoundMode { get; set; }
 
-    private Dictionary<NetworkInstanceId, PreRoundChoice> CurrentPreRoundChoices { get; } =
-        new Dictionary<NetworkInstanceId, PreRoundChoice>();
+    private Dictionary<Player, PreRoundChoice> CurrentPreRoundChoices { get; } =
+        new Dictionary<Player, PreRoundChoice>();
 
     [SyncVar(hook = nameof(OnGameStateTextChanged))]
     private string _gameStateText;
@@ -100,6 +100,9 @@ public class GameManager : NetworkBehaviour
     /// round groups share their points and "play together"
     /// </summary>
     private List<IEnumerable<Player>> _roundGroups = new List<IEnumerable<Player>>();
+    
+    public PlayingCard.Suit CurrentTrumpSuit { get; private set; }
+
     
     [SerializeField] private Image[] playedCardSlots = new Image[4];
 
@@ -198,7 +201,7 @@ public class GameManager : NetworkBehaviour
         // the starting player decides first
         _currentTurnPlayer = _roundStartingPlayer;
         
-        // reset the Round Mode
+        // reset the Round Mode. If no one wants to play, Ramsch is the correct round mode
         CurrentRoundMode = RoundMode.Ramsch;
         
         // reset the player choices
@@ -241,7 +244,7 @@ public class GameManager : NetworkBehaviour
         // count scores in stiches, and add to player scores
         foreach (var entry in _completedStiches)
         {
-            int stichWorth = entry.Key.CalculateStichWorth();
+            int stichWorth = entry.Key.CalculateStichWorth(CurrentRoundMode);
             Player stichWinner = entry.Value;
             throw new NotImplementedException("WIP");
             // TODO check _roundGroups and add the score to every player in the group?
@@ -269,10 +272,12 @@ public class GameManager : NetworkBehaviour
         if (playerChoice != PreRoundChoice.Weiter) 
         {
             CurrentRoundMode = (RoundMode) playerChoice;
+            CurrentTrumpSuit = GetTrumpSuit(playerChoice);
         }
 
-        // maybe we want to show the choices to all players at some point
-        CurrentPreRoundChoices[playerId] = playerChoice;
+        // remember the player's choice
+        Player player = _players.Find(p => p.netId == playerId);
+        CurrentPreRoundChoices[player] = playerChoice;
 
         bool preRoundFinished = playerChoice == PreRoundChoice.Wenz || CurrentPreRoundChoices.Count == _players.Count;
         
@@ -288,10 +293,28 @@ public class GameManager : NetworkBehaviour
             _currentTurnPlayer.RpcDisplayPreRoundButtons(CurrentRoundMode);
         }
     }
+    
+    private static PlayingCard.Suit GetTrumpSuit(PreRoundChoice playerChoice)
+    {
+        switch (playerChoice)
+        {
+            case PreRoundChoice.Weiter:
+                throw new ArgumentOutOfRangeException($"cannot get trump suit for playerChoice {playerChoice}");
+            case PreRoundChoice.SauspielBlatt:
+            case PreRoundChoice.SauspielEichel:
+            case PreRoundChoice.SauspielSchelln:
+                return PlayingCard.Suit.Herz;
+            case PreRoundChoice.Solo:
+                throw new NotImplementedException("TODO trump choices still missing in solo");
+            case PreRoundChoice.Wenz:
+                throw new NotImplementedException("TODO trump choices still missing in Wenz");
+            default:
+                throw new ArgumentOutOfRangeException(nameof(playerChoice), playerChoice, null);
+        }
+    }
 
-    [Server]
-    private static List<IEnumerable<Player>> CalculateRoundGroups(
-        IReadOnlyDictionary<NetworkInstanceId, PreRoundChoice> playerChoices,
+    public static List<IEnumerable<Player>> CalculateRoundGroups(
+        Dictionary<Player, PreRoundChoice> playerChoices,
         List<Player> players,
         RoundMode roundMode)
     {
@@ -316,12 +339,12 @@ public class GameManager : NetworkBehaviour
                 
                 // find the player that has the respective Sau
                 Player sauOwner = players.Find(player => player.handCards.Contains(
-                    new PlayingCard.PlayingCardInfo(PlayingCard.Rank.Ass, sauSuit)
+                    new PlayingCard.PlayingCardInfo(sauSuit, PlayingCard.Rank.Ass)
                     ));
 
                 // find the player that has decided to play for the Sau...
                 Player sauPlayer = players.Find(player =>
-                    playerChoices[player.netId] == (PreRoundChoice) roundMode);
+                    playerChoices[player] == (PreRoundChoice) roundMode);
 
                 // there are two groups, one with the above two players, and one with the other two
                 var sauGroup = new [] {sauOwner, sauPlayer};
@@ -333,7 +356,7 @@ public class GameManager : NetworkBehaviour
             case RoundMode.Wenz:
                 // the player who chose the solo/wenz is alone playing against the other 3 players
                 Player alonePlayer = players.Find(player =>
-                    playerChoices[player.netId] == (PreRoundChoice) roundMode);
+                    playerChoices[player] == (PreRoundChoice) roundMode);
                 var alonePlayerGroup = new [] {alonePlayer};
                 roundGroups.Add(alonePlayerGroup);
                 roundGroups.Add(players.Except(alonePlayerGroup));
@@ -395,7 +418,7 @@ public class GameManager : NetworkBehaviour
         currentStichStruct.AddAll(_currentStich.ToArray());
 
         // determine who won the stich
-        PlayingCard.PlayingCardInfo winningCard = currentStichStruct.CalculateWinningCard();
+        PlayingCard.PlayingCardInfo winningCard = currentStichStruct.CalculateWinningCard(CurrentTrumpSuit);
         Player winningPlayer = _players.Cycle(_currentTurnPlayer, _currentStich.IndexOf(winningCard) + 1);
         
         // let the players know
@@ -464,18 +487,18 @@ public class GameManager : NetworkBehaviour
     [Server]
     private void DealCards()
     {
-        int handedCards = 0;
+        int dealtCards = 0;
         foreach (Player player in _players)
         {
             Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
-                      $"Player {player.netId} should get cards {handedCards} to {handedCards + 7}");
+                      $"Player {player.netId} should get cards {dealtCards} to {dealtCards + 7}");
             // this updates a SyncList on the player server object, which then notifies his respective client object
-            for (int i = handedCards; i < handedCards + 8; i++)
+            for (int i = dealtCards; i < dealtCards + 8; i++)
             {
                 player.handCards.Add(_syncListCardDeck[i]);
             }
 
-            handedCards += 8;
+            dealtCards += 8;
         }
 
         // the following has to happen on (all) the clients, hence the RPC

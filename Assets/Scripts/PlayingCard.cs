@@ -7,32 +7,37 @@ public static class PlayingCard
 {
     #region Playing Card Definition
     // use struct for easy serialization in SyncList
-    public struct PlayingCardInfo
+    public readonly struct PlayingCardInfo
     {
-        public readonly Rank Rank;
-        public readonly Suit Suit;
+        public readonly Suit suit;
+        public readonly Rank rank;
 
-        public PlayingCardInfo(Rank rank, Suit suit)
+        public PlayingCardInfo(Suit suit, Rank rank)
         {
-            Rank = rank;
-            Suit = suit;
+            this.suit = suit;
+            this.rank = rank;
         }
 
         public override string ToString()
         {
-            return $"{Suit} {Rank}";
+            return $"{suit} {rank}";
         }
 
-        public override bool Equals(object obj)
+        public override bool Equals(object otherObj)
         {
-            return obj is PlayingCardInfo other && Equals(other);
+            if (otherObj is PlayingCardInfo other)
+            {
+                return suit == other.suit && rank == other.rank;
+            }
+
+            return base.Equals(otherObj);
         }
 
         public override int GetHashCode()
         {
             unchecked
             {
-                return ((int) Rank * 397) ^ (int) Suit;
+                return ((int) suit * 397) ^ (int) rank;
             }
         }
     }
@@ -110,8 +115,8 @@ public static class PlayingCard
     private static Sprite LoadSprite(PlayingCardInfo cardInfo)
     {
         string pathSuffix = "";
-        pathSuffix += cardInfo.Suit.ToString().ToLower();
-        pathSuffix += GetRankFileSuffix(cardInfo.Rank);
+        pathSuffix += cardInfo.suit.ToString().ToLower();
+        pathSuffix += GetRankFileSuffix(cardInfo.rank);
         return Resources.Load<Sprite>($"Spielkarten/{pathSuffix}");
     }
 
@@ -172,7 +177,7 @@ public static class PlayingCard
         {
             foreach (Rank rank in ranks)
             {
-                PlayingCardInfo cardInfo = new PlayingCardInfo(rank, suit);
+                PlayingCardInfo cardInfo = new PlayingCardInfo(suit, rank);
                 deck.Add(cardInfo);
                 
                 // also store the sprite in the dictionary for later access
