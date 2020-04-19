@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using UnityEngine;
 using Random = System.Random;
@@ -51,7 +52,7 @@ public static class Extensions
                        "Dummy calculation, simply picking random card");
 
         // TODO actual implementation (add parameters that are necessary for calculation, e.g. current Trump Suit)
-        int winningCardIndex = Rng.Next(3);
+        int winningCardIndex = Rng.Next(4);
         PlayingCard.PlayingCardInfo winningCard = stich.GetCard(winningCardIndex);
 
         return winningCard;
@@ -83,31 +84,56 @@ public static class Extensions
 
     public struct ScoreBoardRow
     {
-        private int _entryCount;
-        
+        public int EntryCount { get; private set; }
+
         public class ScoreBoardEntry
         {
             public readonly string name;
-            public readonly int score;
+            public int score;
 
             internal ScoreBoardEntry(string name, int score)
             {
                 this.name = name;
                 this.score = score;
             }
+            
+            public override string ToString()
+            {
+                return $"{name}:{score}";
+            }
         }
 
-        public ScoreBoardEntry[] Entries { get; }
+        public ScoreBoardEntry[] Entries { get; private set; }
 
         public void AddEntry(string name, int score)
         {
-            if (_entryCount == 4)
+            if (Entries == null)
             {
-                throw new InvalidOperationException("Already 4 entries in row");
+                Entries = new ScoreBoardEntry[4];
             }
+
+            var existingEntry = Entries.Take(EntryCount).ToList().Find(entry => entry.name.Equals(name));
+            bool nameExists = existingEntry != null;
             
-            Entries[_entryCount] = new ScoreBoardEntry(name, score);
-            _entryCount++;
+            if (nameExists)
+            {
+                // add score to the existing entry
+                existingEntry.score += score;
+            }
+            else if (EntryCount == 4)
+            {
+                throw new InvalidOperationException("Already 4 distinct names in this row");
+            }
+            else // we have space for adding the new name
+            {
+                Entries[EntryCount] = new ScoreBoardEntry(name, score);
+                EntryCount++;
+            }
+        }
+
+        public override string ToString()
+        {
+            return string.Join(" | ", Entries.Take(EntryCount));
         }
     }
 }

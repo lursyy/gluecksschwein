@@ -99,7 +99,7 @@ public class GameManager : NetworkBehaviour
     /// <summary>
     /// round groups share their points and "play together"
     /// </summary>
-    private List<IEnumerable<Player>> _roundGroups = new List<IEnumerable<Player>>();
+    private List<List<Player>> _roundGroups = new List<List<Player>>();
 
     private class SyncListScoreBoard : SyncListStruct<Extensions.ScoreBoardRow> { }
     private readonly SyncListScoreBoard _scoreBoard = new SyncListScoreBoard();
@@ -245,6 +245,8 @@ public class GameManager : NetworkBehaviour
                   "Round finished!");
 
         UpdateScoreBoard();
+
+        RpcShowScoreBoard();
     }
 
     [Server]
@@ -333,12 +335,12 @@ public class GameManager : NetworkBehaviour
         }
     }
 
-    public static List<IEnumerable<Player>> CalculateRoundGroups(
+    public static List<List<Player>> CalculateRoundGroups(
         Dictionary<Player, PreRoundChoice> playerChoices,
         List<Player> players,
         RoundMode roundMode)
     {
-        List<IEnumerable<Player>> roundGroups = new List<IEnumerable<Player>>();
+        List<List<Player>> roundGroups = new List<List<Player>>();
         
         // it all depends on the current round mode
         switch (roundMode)
@@ -367,9 +369,9 @@ public class GameManager : NetworkBehaviour
                     playerChoices[player] == (PreRoundChoice) roundMode);
 
                 // there are two groups, one with the above two players, and one with the other two
-                var sauGroup = new [] {sauOwner, sauPlayer};
+                var sauGroup = new List<Player> {sauOwner, sauPlayer};
                 roundGroups.Add(sauGroup);
-                roundGroups.Add(players.Except(sauGroup)); 
+                roundGroups.Add(players.Except(sauGroup).ToList()); 
                 break;
             
             case RoundMode.Solo:
@@ -377,9 +379,9 @@ public class GameManager : NetworkBehaviour
                 // the player who chose the solo/wenz is alone playing against the other 3 players
                 Player alonePlayer = players.Find(player =>
                     playerChoices[player] == (PreRoundChoice) roundMode);
-                var alonePlayerGroup = new [] {alonePlayer};
+                var alonePlayerGroup = new List<Player>{alonePlayer};
                 roundGroups.Add(alonePlayerGroup);
-                roundGroups.Add(players.Except(alonePlayerGroup));
+                roundGroups.Add(players.Except(alonePlayerGroup).ToList());
                 
                 break;
             default:
@@ -572,6 +574,12 @@ public class GameManager : NetworkBehaviour
         // play the shuffle sound
         _audioSource.clip = soundShuffle;
         _audioSource.Play();
+    }
+
+    [ClientRpc]
+    private void RpcShowScoreBoard()
+    {
+        throw new NotImplementedException();
     }
     
     #endregion
