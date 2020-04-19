@@ -29,7 +29,7 @@ namespace Tests
             int dealtCards = 0;
             foreach (var player in _players)
             {
-                // I am not sure if this works
+                // I am not sure why this is necessary, but it works...
                 player.handCards.InitializeBehaviour(player, player.GetHashCode());
                 
                 for (int i = dealtCards; i < dealtCards + 8; i++)
@@ -158,11 +158,11 @@ namespace Tests
             
             row.AddEntry("Luis", 15);
             Assert.AreEqual(1, row.EntryCount);
-            Assert.AreEqual(row.Entries[0].score, 15);
+            Assert.AreEqual(15, row.entries[0].score);
 
             row.AddEntry("Luis", 27);
             Assert.AreEqual(1, row.EntryCount);
-            Assert.AreEqual(row.Entries[0].score, 42);
+            Assert.AreEqual(42, row.entries[0].score);
         }
     }
 }

@@ -86,39 +86,25 @@ public static class Extensions
     {
         public int EntryCount { get; private set; }
 
-        public class ScoreBoardEntry
-        {
-            public readonly string name;
-            public int score;
-
-            internal ScoreBoardEntry(string name, int score)
-            {
-                this.name = name;
-                this.score = score;
-            }
-            
-            public override string ToString()
-            {
-                return $"{name}:{score}";
-            }
-        }
-
-        public ScoreBoardEntry[] Entries { get; private set; }
+        public ScoreBoardEntry[] entries;
 
         public void AddEntry(string name, int score)
         {
-            if (Entries == null)
+            if (entries == null)
             {
-                Entries = new ScoreBoardEntry[4];
+                entries = new ScoreBoardEntry[4];
             }
 
-            var existingEntry = Entries.Take(EntryCount).ToList().Find(entry => entry.name.Equals(name));
-            bool nameExists = existingEntry != null;
+            var existingEntry = entries.Take(EntryCount).ToList().Find(entry => entry.name.Equals(name));
+            
+            // we have to do a separate check for the name because we cannot do a null check on a struct
+            bool nameExists = existingEntry.name != null && existingEntry.name.Equals(name);
             
             if (nameExists)
             {
-                // add score to the existing entry
-                existingEntry.score += score;
+                // add score to the existing entry (existingEntry is just a copy, apparently) 
+                int entryIndex = Array.IndexOf(entries, existingEntry);
+                entries[entryIndex].score+=score;
             }
             else if (EntryCount == 4)
             {
@@ -126,14 +112,31 @@ public static class Extensions
             }
             else // we have space for adding the new name
             {
-                Entries[EntryCount] = new ScoreBoardEntry(name, score);
+                entries[EntryCount] = new ScoreBoardEntry(name, score);
                 EntryCount++;
             }
         }
 
         public override string ToString()
         {
-            return string.Join(" | ", Entries.Take(EntryCount));
+            return string.Join(" | ", entries.Take(EntryCount));
+        }
+    }
+
+    public struct ScoreBoardEntry
+    {
+        public readonly string name;
+        public int score;
+
+        internal ScoreBoardEntry(string name, int score)
+        {
+            this.name = name;
+            this.score = score;
+        }
+            
+        public override string ToString()
+        {
+            return $"{name}:{score}";
         }
     }
 }

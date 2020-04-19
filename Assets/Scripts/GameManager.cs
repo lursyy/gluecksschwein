@@ -103,6 +103,7 @@ public class GameManager : NetworkBehaviour
 
     private class SyncListScoreBoard : SyncListStruct<Extensions.ScoreBoardRow> { }
     private readonly SyncListScoreBoard _scoreBoard = new SyncListScoreBoard();
+    [SerializeField] private ScoreboardDisplay scoreboardDisplay;
 
     private PlayingCard.Suit CurrentTrumpSuit { get; set; }
     
@@ -188,23 +189,21 @@ public class GameManager : NetworkBehaviour
     /// </summary>
     private void EnterStatePreRound()
     {
-        // update the game state
+        RpcHideScoreBoard();
+        
         CurrentGameState = GameState.PreRound;
         _gameStateText = "Runde vorbereiten...";
 
-        // deal the cards to the players
         DealCards();
         
-        // disable the dealCards Button
         dealCardsButton.gameObject.SetActive(false);
-
-        // select the next starting player
         _roundStartingPlayer = _players.CycleNext(_roundStartingPlayer);
         
         // the starting player decides first
         _currentTurnPlayer = _roundStartingPlayer;
         
-        // reset the Round Mode. If no one wants to play, Ramsch is the correct round mode
+        // We want to use Ramsch as the initial mode:
+        // If everyone selects "Weiter", Ramsch is the correct round mode and we won't have to do anything
         CurrentRoundMode = RoundMode.Ramsch;
         
         // reset the player choices
@@ -243,21 +242,24 @@ public class GameManager : NetworkBehaviour
         CurrentGameState = GameState.RoundFinished;
         Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
                   "Round finished!");
-
+        
+        _players.ForEach(player => player.handCards.Clear());
+        
         UpdateScoreBoard();
+        
+        _gameStateText = $"Runde {_scoreBoard.Count} beendet";
 
-        RpcShowScoreBoard();
+        var playerNames = _players.Select(player => player.playerName).ToArray();
+        RpcUpdateAndShowScoreBoard(playerNames);
+        
+        dealCardsButton.gameObject.SetActive(true);
     }
 
     [Server]
     private void UpdateScoreBoard()
     {
-        // We have two options:
-        // 1. count each player's score, and then add the score to each player of the respective group
-        // 2. while looking at each stich, directly add the score to each player of the respective group
-        // 
-        // 1. is more like you would do in real life, so I chose that.
-
+        // TODO maybe use a cumulative score, i.e. add the last row to this new row
+        
         var roundScore = new Extensions.ScoreBoardRow();
 
         foreach (var player in _players)
@@ -465,6 +467,9 @@ public class GameManager : NetworkBehaviour
         Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
                   $"Finished Stich {_completedStiches.Count}");
 
+        // clear the stiches table and the current stich
+        _currentStich.Clear();
+
         bool roundFinished = _completedStiches.Count == 8;
         if (roundFinished)
         {
@@ -479,9 +484,6 @@ public class GameManager : NetworkBehaviour
     [Server]
     private void StartStich()
     {
-        // clear the stiches table and the current stich
-        _currentStich.Clear();
-
         // notify the current player that it's their turn
         _currentTurnPlayer.RpcStartTurn();
         _gameStateText = $"Runde läuft ({CurrentRoundMode})\n{_currentTurnPlayer.playerName} ist dran";
@@ -509,6 +511,8 @@ public class GameManager : NetworkBehaviour
     [Server]
     private void DealCards()
     {
+        _syncListCardDeck.Shuffle();
+        
         int dealtCards = 0;
         foreach (Player player in _players)
         {
@@ -577,9 +581,16 @@ public class GameManager : NetworkBehaviour
     }
 
     [ClientRpc]
-    private void RpcShowScoreBoard()
+    private void RpcUpdateAndShowScoreBoard(string[] playerNames)
     {
-        throw new NotImplementedException();
+        scoreboardDisplay.AddScoreBoardRow(playerNames, _scoreBoard.Last());
+        scoreboardDisplay.gameObject.SetActive(true);
+    }
+    
+    [ClientRpc]
+    private void RpcHideScoreBoard()
+    {
+        scoreboardDisplay.gameObject.SetActive(false);
     }
     
     #endregion

@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -7,33 +8,43 @@ public class ScoreboardDisplay : MonoBehaviour
     public Transform scoreboardContent;
     public List<Text> playerNameTextFields;
     public ScoreboardRowDisplay rowTemplate;
-    
-    private void Start()
+
+    public void AddScoreBoardRow(string[] playerNames, Extensions.ScoreBoardRow rowToAdd)
     {
-        // test
-        List<string> playerTestNames = new List<string>{"Luis", "Nuria", "Lena", "Lukian"};
-        for (var i = 0; i < playerTestNames.Count; i++)
+        // display the player names
+        for (var i = 0; i < playerNames.Length; i++)
         {
-            playerNameTextFields[i].text = playerTestNames[i];
+            playerNameTextFields[i].text = playerNames[i];
         }
 
-        // insert test rows
-        for (int i = 0; i < 20; i++)
-        {
-            Extensions.ScoreBoardRow testRow = new Extensions.ScoreBoardRow();
-            
-            // insert random score for each of the players
-            for (int j = 0; j < 4; j++)
-            {
-                testRow.AddEntry(playerTestNames[j], Random.Range(0, 100));
-            }
+        AddScoresAtCorrectName(playerNames, rowToAdd);
+    }
 
-            ScoreboardRowDisplay rowDisplay = Instantiate(rowTemplate, scoreboardContent);
-            float rowOffset = rowDisplay.GetComponent<RectTransform>().rect.height + 5;
-            rowDisplay.GetComponent<RectTransform>().anchoredPosition = Vector2.down * rowOffset * i;
-            
-            rowDisplay.FillScoreTexts(testRow);
+    /// <summary>
+    /// Fills the Score Board UI with the entries, ensuring that each entry is displayed under the correct player
+    /// (The order of the ScoreBoardRow is independent from the playerNames in the UI)
+    /// </summary>
+    private void AddScoresAtCorrectName(IReadOnlyCollection<string> playerNames, Extensions.ScoreBoardRow rowToAdd)
+    {
+        // create a new List of scores which will have the correct order
+        List<int> scoresInCorrectOrder = new List<int>();
+        foreach (var playerName in playerNames) // the LINQ expression suggested by Rider is too wild for me
+        {
+            var playerEntry = rowToAdd.entries.ToList()
+                .Find(entry => entry.name.Equals(playerName));
+            scoresInCorrectOrder.Add(playerEntry.score);
+        }
+
+        ScoreboardRowDisplay rowDisplay = Instantiate(rowTemplate, scoreboardContent);
+
+        rowDisplay.FillScoreTexts(scoresInCorrectOrder);
+    }
+
+    public void ClearRows()
+    {
+        foreach (Transform row in scoreboardContent.transform)
+        {
+            Destroy(row.gameObject);
         }
     }
-    
 }

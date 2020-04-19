@@ -101,9 +101,6 @@ public class Player : NetworkBehaviour
         Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
                   $"client {netId} was asked to display the preRound buttons, {nameof(currentRoundMode)}={currentRoundMode}");
         
-        // make the button panel visible
-        GameManager.Singleton.preRoundButtonPanel.gameObject.SetActive(true);
-        
         // disable specific buttons depending on the current game mode
         switch (currentRoundMode)
         {
@@ -135,11 +132,14 @@ public class Player : NetworkBehaviour
                 throw new ArgumentOutOfRangeException();
             }
         }
-        
+
         GameManager.Singleton.preRoundSauspielDropdown.onValueChanged.AddListener(OnPreRoundChooseSauSpiel);
         GameManager.Singleton.preRoundSoloButton.onClick.AddListener(OnPreRoundChooseSolo);
         GameManager.Singleton.preRoundWenzButton.onClick.AddListener(OnPreRoundChooseWenz);
         GameManager.Singleton.preRoundWeiterButton.onClick.AddListener(OnPreRoundChooseWeiter);
+        
+        // we do this last, so the user cannot accidentally click an invalid option before it is disabled
+        GameManager.Singleton.preRoundButtonPanel.gameObject.SetActive(true);
     }
 
     private void OnPreRoundChooseSauSpiel(int sauChoiceInt)
@@ -213,11 +213,17 @@ public class Player : NetworkBehaviour
                 Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
                           $"Player {netId} was notified of new card at position {index}: {handCards[index]}");
                 _handButtons[index].image.sprite = PlayingCard.SpriteDict[handCards[index]];
+                _handButtons[index].gameObject.SetActive(true);
                 break;
             case SyncList<PlayingCard.PlayingCardInfo>.Operation.OP_CLEAR:
                 Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
                           $"Player {netId} was notified of a cleared hand, changing all card to default image");
-                _handButtons.ForEach(button => button.image.sprite = PlayingCard.DefaultCardSprite);
+                foreach (var button in _handButtons)
+                {
+                    button.image.sprite = PlayingCard.DefaultCardSprite;
+                    button.gameObject.SetActive(false); // this might not be necessary, but it doesn't hurt to do it
+                }
+
                 break;
             default:
                 throw new InvalidOperationException($"{nameof(op)}={op}");

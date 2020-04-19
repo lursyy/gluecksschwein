@@ -9,13 +9,13 @@ public class ScoreboardRowDisplay : MonoBehaviour
 {
     public List<Text> scoreTexts;
 
-    public void FillScoreTexts(Extensions.ScoreBoardRow row)
+    public void FillScoreTexts(List<int> scores)
     {
-        Assert.AreEqual(scoreTexts.Count, row.EntryCount);
+        Assert.AreEqual(scoreTexts.Count, scores.Count);
 
         for (var i = 0; i < scoreTexts.Count; i++)
         {
-            scoreTexts[i].text = row.Entries[i].score.ToString();
+            scoreTexts[i].text = scores[i].ToString();
         }
     }
 }
