@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
+using TMPro;
 using UnityEngine;
 using UnityEngine.Networking;
 using UnityEngine.UI;
@@ -42,7 +43,7 @@ public class GameManager : NetworkBehaviour
     private string _gameStateText;
 
     [Header("General")]
-    [SerializeField] private Text gameStateTextField;
+    [SerializeField] private TextMeshProUGUI gameStateTextField;
     
     public enum RoundMode
     {
