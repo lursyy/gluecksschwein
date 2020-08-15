@@ -72,8 +72,6 @@ public static class Extensions
 
         for (int i = 0; i < stich.CardCount; i++)
         {
-            PlayingCard.PlayingCardInfo card = stich.GetCard(i);
-            
             // TODO actual implementation (add parameters that are necessary for calculation, e.g. current Trump Suit)
             int cardWorth = Rng.Next(10);
             stichWorth += cardWorth;
