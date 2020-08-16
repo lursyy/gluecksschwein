@@ -25,6 +25,7 @@ public class CustomNetworkHUD : MonoBehaviour
 
     [SerializeField] private float refreshIntervalSeconds = 1f;
     private float _nextRefreshTime;
+    private bool _uiActive = true;
 
     private void Awake()
     {
@@ -60,6 +61,7 @@ public class CustomNetworkHUD : MonoBehaviour
 
     private void DisableUi()
     {
+        _uiActive = false;
         lobbyPanel.SetActive(false);
     }
 
@@ -91,16 +93,15 @@ public class CustomNetworkHUD : MonoBehaviour
     private void RefreshMatches()
     {
         _nextRefreshTime += refreshIntervalSeconds;
-
-        Debug.Log("Refreshing Match List...");
-
+        
         if (_manager.matchMaker == null)
         {
             _manager.StartMatchMaker();
         }
 
-        // TODO maybe check if we are currently in a match (how?) and if so, just return here
+        if (!_uiActive) return;
 
+        Debug.Log("Refreshing Match List...");
         _manager.matchMaker.ListMatches(0, 10, "", true, 0, 0, OnMatchList);
     }
 
