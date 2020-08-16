@@ -1,0 +1,26 @@
+name: CI-Tests
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  playModeTests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: webbertakken/unity-test-runner@v1.6
+        id: testStep
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+        with:
+          unityVersion: 2019.4.8f1
+          testMode: editmode
+      
+      - uses: actions/upload-artifact@v2
+        with:
+          name: Test results
+          path: ${{ steps.testStep.outputs.artifactsPath }}
