@@ -5,7 +5,6 @@ using System.Linq;
 using System.Reflection;
 using TMPro;
 using UnityEngine;
-using UnityEngine.Assertions;
 using UnityEngine.Networking;
 using UnityEngine.UI;
 
@@ -47,7 +46,8 @@ public class GameManager : NetworkBehaviour
     {
         Ramsch,
         Sauspiel,
-        Solo,
+        FarbSolo,
+        FarbWenz,
         Wenz
     }
 
@@ -104,7 +104,7 @@ public class GameManager : NetworkBehaviour
 
     /// <summary>
     /// The Suit determined in the pre-round.
-    /// For Solo and Wenz, this is the Trump Suit chosen by the player.
+    /// For FarbSolo and FarbWenz, this is the Trump Suit chosen by the player.
     /// For Sauspiel, this is the chosen Suit that determines the teams.
     /// </summary>
     private PlayingCard.Suit CurrentRoundSuit { get; set; }
@@ -304,7 +304,9 @@ public class GameManager : NetworkBehaviour
         bool allPlayersHaveChosen = _roundStartingPlayer.Equals(_players.CycleNext(_currentTurnPlayer));
 
         // it is not necessary that all players choose if this player chose Wenz
-        bool preRoundFinished = playerChoiceRoundMode == RoundMode.Wenz || allPlayersHaveChosen;
+        bool preRoundFinished = (playerChoiceRoundMode == RoundMode.Wenz
+                                 || playerChoiceRoundMode == RoundMode.FarbWenz
+                                 || allPlayersHaveChosen);
 
         if (preRoundFinished)
         {
@@ -325,7 +327,7 @@ public class GameManager : NetworkBehaviour
     /// </summary>
     /// <param name="roundMode">The current round mode</param>
     /// <param name="roundSuit">The current round suit,
-    ///     i.e. extra trump suit for Wenz/Solo, or the "sought" Ace-Suit for Sauspiel</param>
+    ///     i.e. extra trump suit for FarbWenz/FarbSolo, or the "sought" Ace-Suit for Sauspiel</param>
     /// <returns>The list of cards that are currently trumps, sorted by increasing precedence</returns>
     /// <seealso cref="CurrentRoundSuit"/>
     public static List<PlayingCard.PlayingCardInfo> GetTrumpList(RoundMode roundMode, PlayingCard.Suit roundSuit)
@@ -338,24 +340,26 @@ public class GameManager : NetworkBehaviour
             select new PlayingCard.PlayingCardInfo(suit, PlayingCard.Rank.Unter)
         );
 
-        // For Wenz we are actually done
+        // For Wenz, we are already done
         if (roundMode == RoundMode.Wenz) return trumps;
 
-        // For all other modes, add the "Ober"s above the "Unter"s...
-        trumps.AddRange(
-            from PlayingCard.Suit suit in Enum.GetValues(typeof(PlayingCard.Suit))
-            select new PlayingCard.PlayingCardInfo(suit, PlayingCard.Rank.Ober)
-        );
-
-        // ... and add the additional Trump Suit BELOW the other trumps
-        // (the user specified suit in case of Solo, or Herz in case of Sauspiel/Ramsch)
-        PlayingCard.Suit additionalTrumpSuit =
-            roundMode == RoundMode.Solo ? roundSuit : PlayingCard.Suit.Herz;
-
+        // For all other modes, add the additional Trump Suit BELOW the other trumps
+        // (the user specified suit in case of FarbSolo/FarbWenz, or Herz in case of Sauspiel/Ramsch)
+        PlayingCard.Suit additionalTrumpSuit = 
+            (roundMode == RoundMode.FarbSolo || roundMode == RoundMode.FarbWenz) ? roundSuit : PlayingCard.Suit.Herz;
         trumps.InsertRange(0,
             from PlayingCard.Rank rank in Enum.GetValues(typeof(PlayingCard.Rank))
             where rank < PlayingCard.Rank.Unter
             select new PlayingCard.PlayingCardInfo(additionalTrumpSuit, rank)
+        );
+
+        // For FarbWenz, we are done here
+        if (roundMode == RoundMode.FarbWenz) return trumps;
+        
+        // For FarbSolo, Sauspiel, Ramsch add the "Ober"s at the top
+        trumps.AddRange(
+            from PlayingCard.Suit suit in Enum.GetValues(typeof(PlayingCard.Suit))
+            select new PlayingCard.PlayingCardInfo(suit, PlayingCard.Rank.Ober)
         );
 
         return trumps;
@@ -368,7 +372,7 @@ public class GameManager : NetworkBehaviour
     /// <param name="roundModeDecider">The player that "won" the pre round decision, i.e. the player that decided the round mode</param>
     /// <param name="roundMode">The current round mode</param>
     /// <param name="roundSuit">The current round suit,
-    ///     i.e. extra trump suit for Wenz/Solo, or the "sought" Ace-Suit for Sauspiel</param>
+    ///     i.e. extra trump suit for FarbWenz/FarbSolo, or the "sought" Ace-Suit for Sauspiel</param>
     /// <returns>A List of Groups of Players</returns>
     /// <exception cref="ArgumentOutOfRangeException"></exception>
     public static List<List<Player>> CalculateRoundGroups(List<Player> players, Player roundModeDecider,
@@ -400,7 +404,8 @@ public class GameManager : NetworkBehaviour
                 roundGroups.Add(players.Except(sauGroup).ToList());
                 break;
 
-            case RoundMode.Solo:
+            case RoundMode.FarbSolo:
+            case RoundMode.FarbWenz:
             case RoundMode.Wenz:
                 // the player who chose the solo/wenz is alone playing against the other 3 players
                 var alonePlayerGroup = new List<Player> {roundModeDecider};
@@ -446,7 +451,8 @@ public class GameManager : NetworkBehaviour
         currentStichStruct.AddAll(_currentStich.ToArray());
 
         // determine who won the stich
-        PlayingCard.PlayingCardInfo winningCard = currentStichStruct.CalculateWinningCard(CurrentRoundMode, CurrentRoundSuit);
+        PlayingCard.PlayingCardInfo winningCard =
+            currentStichStruct.CalculateWinningCard(CurrentRoundMode, CurrentRoundSuit);
         Player winningPlayer = _players.Cycle(_currentTurnPlayer, _currentStich.IndexOf(winningCard) + 1);
 
         // let the players know
