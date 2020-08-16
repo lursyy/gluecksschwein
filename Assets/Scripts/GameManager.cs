@@ -79,8 +79,8 @@ public class GameManager : NetworkBehaviour
 
     [Header("Pre-Round")] public GameObject preRoundButtonPanel;
     public Dropdown preRoundSauspielDropdown;
-    public Button preRoundSoloButton;
-    public Button preRoundWenzButton;
+    public Dropdown preRoundSoloDropdown;
+    public Dropdown preRoundWenzDropdown;
     public Button preRoundWeiterButton;
 
     private Player _roundStartingPlayer;

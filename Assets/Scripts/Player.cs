@@ -71,7 +71,7 @@ public class Player : NetworkBehaviour
     [Client]
     private void OnGUI()
     {
-        // TODO maybe display player name during game
+        // TODO Make proper UI for user name
 
         if (!isLocalPlayer || GameManager.Singleton.CurrentGameState > GameManager.GameState.GameRunning) return;
 
@@ -116,7 +116,7 @@ public class Player : NetworkBehaviour
                 break;
             case GameManager.RoundMode.FarbSolo:
                 GameManager.Singleton.preRoundSauspielDropdown.interactable = false;
-                GameManager.Singleton.preRoundSoloButton.interactable = false;
+                GameManager.Singleton.preRoundSoloDropdown.interactable = false;
                 break;
             case GameManager.RoundMode.Wenz:
             case GameManager.RoundMode.FarbWenz:
@@ -127,8 +127,8 @@ public class Player : NetworkBehaviour
         }
 
         GameManager.Singleton.preRoundSauspielDropdown.onValueChanged.AddListener(OnPreRoundChooseSauSpiel);
-        GameManager.Singleton.preRoundSoloButton.onClick.AddListener(OnPreRoundChooseSolo);
-        GameManager.Singleton.preRoundWenzButton.onClick.AddListener(OnPreRoundChooseWenz);
+        GameManager.Singleton.preRoundSoloDropdown.onValueChanged.AddListener(OnPreRoundChooseSolo);
+        GameManager.Singleton.preRoundWenzDropdown.onValueChanged.AddListener(OnPreRoundChooseWenz);
         GameManager.Singleton.preRoundWeiterButton.onClick.AddListener(OnPreRoundChooseWeiter);
 
         // we do this last, so the user cannot accidentally click an invalid option before it is disabled
@@ -141,8 +141,9 @@ public class Player : NetworkBehaviour
         {
             return;
         }
-
         HidePreRoundButtons();
+
+        Assert.IsTrue(0 <= sauChoiceInt && sauChoiceInt < 4);
 
         // do nothing if the player clicked the first dropdown item (which simply says "Sauspiel...")
         if (sauChoiceInt == 0)
@@ -151,44 +152,66 @@ public class Player : NetworkBehaviour
         }
 
         // otherwise, convert the clicked item index into a choice
-        Assert.IsTrue(0 < sauChoiceInt && sauChoiceInt < 4);
-        PlayingCard.Suit sauChoice = (PlayingCard.Suit) sauChoiceInt - 1;
+        PlayingCard.Suit sauSuit = (PlayingCard.Suit) sauChoiceInt - 1;
 
-        CmdSelectPreRoundChoice(GameManager.RoundMode.Sauspiel, sauChoice);
+        CmdSelectPreRoundChoice(GameManager.RoundMode.Sauspiel, sauSuit);
     }
 
     [Client]
-    private void OnPreRoundChooseSolo()
+    private void OnPreRoundChooseSolo(int soloChoiceInt)
     {
         if (!isLocalPlayer)
         {
             return;
         }
-
         HidePreRoundButtons();
+        
+        // 0: nothing, 1-4: Suit Selection
+        Assert.IsTrue(0 <= soloChoiceInt && soloChoiceInt <= 4);
 
-        // TODO get the solo suit from the user via the UI (create dropdown like with Sauspiel)
-        PlayingCard.Suit additionalTrumps = PlayingCard.Suit.Herz;
+        // do nothing if the player clicked the first dropdown item
+        if (soloChoiceInt == 0)
+        {
+            return;
+        }
+
+        // otherwise, directly convert the clicked item index
+        PlayingCard.Suit additionalTrumps = (PlayingCard.Suit) soloChoiceInt - 1;
 
         CmdSelectPreRoundChoice(GameManager.RoundMode.FarbSolo, additionalTrumps);
     }
 
     [Client]
-    private void OnPreRoundChooseWenz()
+    private void OnPreRoundChooseWenz(int wenzChoiceInt)
     {
         if (!isLocalPlayer)
         {
             return;
         }
-
         HidePreRoundButtons();
 
-        // TODO get the wenz suit from the user via the UI (create dropdown like with Sauspiel)
-        PlayingCard.Suit additionalTrumps = PlayingCard.Suit.Herz;
+        
+        // 0: nothing, 1-4: FarbWenz Suit Selection, 5: Normal Wenz
+        Assert.IsTrue(0 <= wenzChoiceInt && wenzChoiceInt <= 5);
 
-        // TODO !!! There is also a Wenz without additional Trumps (Farbloser Wenz) !!!
-
-        CmdSelectPreRoundChoice(GameManager.RoundMode.Wenz, additionalTrumps);
+        switch (wenzChoiceInt)
+        {
+            // do nothing if the player clicked the first dropdown item
+            case 0:
+                return;
+            // Did the player choose a normal Wenz (i.e. without Suit)?
+            case 5:
+                // the Suit does not matter here, but we have to pass one
+                CmdSelectPreRoundChoice(GameManager.RoundMode.Wenz, PlayingCard.Suit.Blatt);
+                break;
+            default:
+            {
+                // otherwise, directly convert the clicked item index
+                PlayingCard.Suit additionalTrumps = (PlayingCard.Suit) wenzChoiceInt - 1;
+                CmdSelectPreRoundChoice(GameManager.RoundMode.FarbWenz, additionalTrumps);
+                break;
+            }
+        }
     }
 
     [Client]
@@ -222,12 +245,12 @@ public class Player : NetworkBehaviour
 
         // reset all the buttons to their active state (we disable the ones we don't want in RcpDisplayPreRoundButtons)
         GameManager.Singleton.preRoundSauspielDropdown.interactable = true;
-        GameManager.Singleton.preRoundSoloButton.interactable = true;
+        GameManager.Singleton.preRoundSoloDropdown.interactable = true;
 
         // remove all onclick listeners, so we don't get notified when another player clicks these buttons
         GameManager.Singleton.preRoundSauspielDropdown.onValueChanged.RemoveListener(OnPreRoundChooseSauSpiel);
-        GameManager.Singleton.preRoundSoloButton.onClick.RemoveListener(OnPreRoundChooseSolo);
-        GameManager.Singleton.preRoundWenzButton.onClick.RemoveListener(OnPreRoundChooseWenz);
+        GameManager.Singleton.preRoundSoloDropdown.onValueChanged.RemoveListener(OnPreRoundChooseSolo);
+        GameManager.Singleton.preRoundWenzDropdown.onValueChanged.RemoveListener(OnPreRoundChooseWenz);
         GameManager.Singleton.preRoundWeiterButton.onClick.RemoveListener(OnPreRoundChooseWeiter);
     }
 
