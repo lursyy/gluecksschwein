@@ -41,11 +41,22 @@ public static class Extensions
     }
 
 
-    public static PlayingCard.PlayingCardInfo CalculateWinningCard(this PlayingCard.Stich stich, PlayingCard.Suit trumpSuit)
+    /// <summary>
+    /// Determines which card won the Stich.
+    /// </summary>
+    /// <param name="stich">The stich whose winner to determine</param>
+    /// <param name="roundMode">The used round mode</param>
+    /// <param name="roundSuit">The round suit (solo/wenz: additional trump suit, sauspiel: sought ace suit)</param>
+    /// <returns>The winning card of the Stich</returns>
+    /// <exception cref="ArgumentException"></exception>
+    public static PlayingCard.PlayingCardInfo CalculateWinningCard(this PlayingCard.Stich stich,
+        GameManager.RoundMode roundMode, PlayingCard.Suit roundSuit)
     {
+        List<PlayingCard.PlayingCardInfo> trumps = GameManager.GetTrumpList(roundMode, roundSuit);
+        
         if (!stich.IsComplete)
         {
-            throw new InvalidOperationException("Cannot calculate winning card for incomplete stich");
+            throw new ArgumentException("Cannot calculate winning card for incomplete stich");
         }
         
         Debug.LogWarning($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}:" +
@@ -56,28 +67,6 @@ public static class Extensions
         PlayingCard.PlayingCardInfo winningCard = stich.GetCard(winningCardIndex);
 
         return winningCard;
-    }
-
-    public static int CalculateStichWorth(this PlayingCard.Stich stich, GameManager.RoundMode roundMode)
-    {
-        if (!stich.IsComplete)
-        {
-            throw new InvalidOperationException("Cannot calculate winning card for incomplete stich");
-        }
-        
-        Debug.LogWarning($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}:" +
-                       "Dummy calculation, simply returning random number");
-
-        int stichWorth = 0;
-
-        for (int i = 0; i < stich.CardCount; i++)
-        {
-            // TODO actual implementation (add parameters that are necessary for calculation, e.g. current Trump Suit)
-            int cardWorth = Rng.Next(10);
-            stichWorth += cardWorth;
-        }
-        
-        return stichWorth;
     }
 
     public struct ScoreBoardRow

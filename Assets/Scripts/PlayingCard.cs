@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
+using UnityEngine.Assertions;
 
 public static class PlayingCard
 {
@@ -37,6 +39,27 @@ public static class PlayingCard
             unchecked
             {
                 return ((int) suit * 397) ^ (int) rank;
+            }
+        }
+
+        public int Worth
+        {
+            get
+            {
+                switch (rank)
+                {
+                    case Rank.Sieben:
+                    case Rank.Acht:
+                    case Rank.Neun: return 0;
+
+                    case Rank.Unter: return 2;
+                    case Rank.Ober: return 3;
+                    case Rank.Koenig: return 4;
+                    case Rank.Zehn: return 10;
+                    case Rank.Ass: return 11;
+                    default:
+                        throw new ArgumentOutOfRangeException();
+                }
             }
         }
     }
@@ -108,6 +131,17 @@ public static class PlayingCard
         {
             return _cards[index];
         }
+
+        public int Worth
+        {
+            get
+            {
+                // Currently, there shouldn't be any reason to query the worth of an an incomplete stich.
+                Assert.IsTrue(IsComplete);
+                return _cards.Sum(card => card.Worth);
+            }
+        }
+        
     }
 
     #endregion

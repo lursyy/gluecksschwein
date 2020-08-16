@@ -15,7 +15,7 @@ namespace Tests
             stich.AddCard(new PlayingCard.PlayingCardInfo(PlayingCard.Suit.Herz, PlayingCard.Rank.Acht));
             stich.AddCard(new PlayingCard.PlayingCardInfo(PlayingCard.Suit.Schelln, PlayingCard.Rank.Unter));
             
-            int stichWorth = stich.CalculateStichWorth(GameManager.RoundMode.SauspielBlatt);
+            int stichWorth = stich.Worth;
             // TODO this is going to fail because I don't know how to calculate the stich worth, so I cannot come up with a test
             Assert.AreEqual(42, stichWorth);
         }
@@ -29,7 +29,7 @@ namespace Tests
             stich.AddCard(new PlayingCard.PlayingCardInfo(PlayingCard.Suit.Blatt, PlayingCard.Rank.Ober));
             stich.AddCard(new PlayingCard.PlayingCardInfo(PlayingCard.Suit.Schelln, PlayingCard.Rank.Sieben));
             
-            int stichWorth = stich.CalculateStichWorth(GameManager.RoundMode.Solo);
+            int stichWorth = stich.Worth;
             // TODO this is going to fail because I don't know how to calculate the stich worth, so I cannot come up with a test
             Assert.AreEqual(-5, stichWorth);
         }
@@ -47,9 +47,9 @@ namespace Tests
             stich.AddCard(new PlayingCard.PlayingCardInfo(PlayingCard.Suit.Herz, PlayingCard.Rank.Acht));
             stich.AddCard(new PlayingCard.PlayingCardInfo(PlayingCard.Suit.Schelln, PlayingCard.Rank.Unter));
 
-            stich.CalculateWinningCard(PlayingCard.Suit.Herz);
+            stich.CalculateWinningCard(GameManager.RoundMode.Sauspiel, PlayingCard.Suit.Eichel);
             
-            int stichWorth = stich.CalculateStichWorth(GameManager.RoundMode.SauspielBlatt);
+            int stichWorth = stich.Worth;
             // TODO this is going to fail because I don't know how to calculate the stich worth, so I cannot come up with a test
             Assert.AreEqual(42, stichWorth);
         }
