@@ -456,6 +456,8 @@ public class GameManager : NetworkBehaviour
 
         // determine who won the stich
         _currentStichWinner = currentStichStruct.CalculateWinningCard(CurrentRoundMode, CurrentRoundSuit);
+        Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
+                  $"Server {netId} setting Stich Winner = {_currentStichWinner}");
         Player winningPlayer = _players.Cycle(_currentTurnPlayer, _currentStich.IndexOf(_currentStichWinner) + 1);
 
         // let the players know
@@ -467,7 +469,7 @@ public class GameManager : NetworkBehaviour
         // the winning player starts with the next stich
         _currentTurnPlayer = winningPlayer;
 
-        // finish the stich after a small delay, so that everyone can understand what happened
+        // finish the stich after a small delaySecs, so that everyone can understand what happened
         StartCoroutine(StartNextStichWithDelay(secondsPauseAfterStich));
     }
 
@@ -570,6 +572,9 @@ public class GameManager : NetworkBehaviour
                 {
                     cardSlot.gameObject.SetActive(false);
                     cardSlot.sprite = PlayingCard.DefaultCardSprite;
+                    
+                    // reset size back to normal to undo the "Highlighting" of the winner
+                    cardSlot.rectTransform.localScale = Vector3.one;
                 }
 
                 break;
@@ -580,44 +585,33 @@ public class GameManager : NetworkBehaviour
 
     private void OnStichWinnerChanged(PlayingCard.PlayingCardInfo newStichWinner)
     {
-        if (_currentStich.Count != 4) return;
-        
+        Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
+                  $"Client {netId} was notified of Stich winner '{newStichWinner}'");
+        Assert.IsTrue(_currentStich.Count == 4);
+
         int i = _currentStich.IndexOf(newStichWinner);
         
         // we expect the stich winner to be one of the played cards!
         Assert.AreNotEqual(-1, i);
 
         // slightly enlarge the card
-        StartCoroutine(nameof(EmphasizeStichWinner));
+        StartCoroutine(HighlightStichCard(i, secondsPauseAfterStich * 1f/3));
     }
 
-    private IEnumerator EmphasizeStichWinner()
+    /// <summary>
+    /// Highlights the card at the given index after a given time delaySecs in seconds
+    /// </summary>
+    /// <param name="index"></param>
+    /// <param name="delaySecs"></param>
+    /// <returns></returns>
+    private IEnumerator HighlightStichCard(int index, float delaySecs)
     {
-        yield return new WaitForSeconds(secondsPauseAfterStich * 1f/3);
+        yield return new WaitForSeconds(delaySecs);
+
+        Image winnerImage = playedCardSlots[index];
         
-        int i = _currentStich.IndexOf(_currentStichWinner);
-        Assert.AreNotEqual(-1, i);
-        Image winnerImage = playedCardSlots[i];
-        
-        // slightly enlarge the card, and decrease opacity of the other cards
+        // slightly enlarge the card
         winnerImage.rectTransform.localScale = Vector3.one * 1.2f;
-        foreach (var image in playedCardSlots)
-        {
-            if (image == winnerImage) continue;
-            var col = image.color;
-            col.a = 0.5f;
-            image.color = col;
-        }
-        yield return new WaitForSeconds(secondsPauseAfterStich * 1f/3);
-        
-        // reset everything back to normal
-        winnerImage.rectTransform.localScale = Vector3.one;
-        foreach (var image in playedCardSlots)
-        {
-            var col = image.color;
-            col.a = 1;
-            image.color = col;
-        }
     }
 
     private void OnGameStateTextChanged(string newText)
