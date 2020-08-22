@@ -7,7 +7,7 @@ on:
     branches: [ master ]
 
 jobs:
-  playModeTests:
+  editModeTests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -16,7 +16,6 @@ jobs:
         id: testStep
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
-          #TEST_MODE: editmode
         with:
           unityVersion: 2019.4.8f1
       
