@@ -4,7 +4,7 @@ namespace Tests
 {
     public class SauspielStichTest : StichTestBase
     {
-        public SauspielStichTest() : base(GameManager.RoundMode.Sauspiel, PlayingCard.Suit.Herz)
+        public SauspielStichTest() : base(GameManager.RoundMode.Sauspiel)
         {
         }
 
