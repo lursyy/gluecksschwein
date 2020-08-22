@@ -76,6 +76,7 @@ public class GameManager : NetworkBehaviour
     private readonly List<Player> _players = new List<Player>();
 
     public List<Button> localPlayerCardButtons;
+    public TMP_InputField playerNameInput;
     public Button dealCardsButton;
 
     #endregion
@@ -247,7 +248,7 @@ public class GameManager : NetworkBehaviour
 
         _gameStateText = $"Runde {_scoreBoard.Count} beendet";
 
-        var playerNames = _players.Select(player => player.playerName).ToArray();
+        var playerNames = _players.Select(player => player.PlayerName).ToArray();
         RpcUpdateAndShowScoreBoard(playerNames);
 
         dealCardsButton.gameObject.SetActive(true);
@@ -268,7 +269,7 @@ public class GameManager : NetworkBehaviour
 
             // add the player's round score to each member of their group, including themselves
             foreach (var groupPlayer in _roundGroups.Find(group => group.Contains(player)))
-                roundScore.AddEntry(groupPlayer.playerName, playerRoundScore);
+                roundScore.AddEntry(groupPlayer.PlayerName, playerRoundScore);
         }
 
         _scoreBoard.Add(roundScore);
@@ -446,7 +447,7 @@ public class GameManager : NetworkBehaviour
         {
             // initiate the next player's turn
             _currentTurnPlayer = _players.CycleNext(_currentTurnPlayer);
-            _gameStateText = $"Runde läuft ({CurrentRoundMode})\n{_currentTurnPlayer.playerName} ist dran";
+            _gameStateText = $"Runde läuft ({CurrentRoundMode})\n{_currentTurnPlayer.PlayerName} ist dran";
             _currentTurnPlayer.RpcStartTurn();
         }
     }
@@ -464,7 +465,7 @@ public class GameManager : NetworkBehaviour
         var winningPlayer = _players.Cycle(_currentTurnPlayer, _currentStich.IndexOf(_currentStichWinner) + 1);
 
         // let the players know
-        _gameStateText = $"{winningPlayer.playerName} gewinnt mit {_currentStichWinner}...";
+        _gameStateText = $"{winningPlayer.PlayerName} gewinnt mit {_currentStichWinner}...";
 
         // add the stich to the completed stiches
         _completedStiches[currentStichStruct] = winningPlayer;
@@ -500,7 +501,7 @@ public class GameManager : NetworkBehaviour
     {
         // notify the current player that it's their turn
         _currentTurnPlayer.RpcStartTurn();
-        _gameStateText = $"Runde läuft ({CurrentRoundMode})\n{_currentTurnPlayer.playerName} ist dran";
+        _gameStateText = $"Runde läuft ({CurrentRoundMode})\n{_currentTurnPlayer.PlayerName} ist dran";
     }
 
     [Server]

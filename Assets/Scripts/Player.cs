@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Reflection;
+using TMPro;
 using UnityEngine;
 using UnityEngine.Assertions;
 using UnityEngine.Networking;
@@ -8,7 +9,9 @@ using UnityEngine.UI;
 
 public class Player : NetworkBehaviour
 {
-    public string playerName;
+    public string PlayerName { get; private set; }
+    private TMP_InputField _playerNameInput;
+
     private List<Button> _handButtons;
     public readonly GameManager.SyncListPlayingCard handCards = new GameManager.SyncListPlayingCard();
 
@@ -40,7 +43,13 @@ public class Player : NetworkBehaviour
 
         // set default name
         // (this is not reflected for the gameObject names on the clients)
-        CmdSetUserName($"Spieler {netId.Value - 1}");
+        _playerNameInput = GameManager.Singleton.playerNameInput;
+        var playerName = _playerNameInput.text.Length == 0
+            ? $"Spieler {netId.Value - 1}"
+            : _playerNameInput.text;
+        
+        CmdSetUserName(playerName);
+        _playerNameInput.interactable = false;
     }
 
     private void Awake()
@@ -53,7 +62,7 @@ public class Player : NetworkBehaviour
     {
         Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
                   $"Player {netId} was asked to change name");
-        playerName = newName;
+        PlayerName = newName;
         name = newName;
         RpcSetUserName(newName);
     }
@@ -61,31 +70,17 @@ public class Player : NetworkBehaviour
     [ClientRpc]
     private void RpcSetUserName(string newName)
     {
-        // if (!isLocalPlayer) {return;}
+        if (!isLocalPlayer)
+        {
+            return;
+        }
+
         Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
                   $"Player {netId} was asked to change name");
-        playerName = newName;
+        PlayerName = newName;
         name = newName;
+        _playerNameInput.text = PlayerName;
     }
-
-    [Client]
-    private void OnGUI()
-    {
-        // TODO Make proper UI for user name
-
-        if (!isLocalPlayer || GameManager.Singleton.CurrentGameState > GameManager.GameState.GameRunning) return;
-
-        const int xPos = 30;
-        var yPos = 100;
-
-        GUI.Label(new Rect(xPos, yPos, 100, 20), "Player Name:");
-        playerName = GUI.TextField(new Rect(xPos + 100, yPos, 100, 20), playerName);
-
-        yPos += 20;
-
-        if (GUI.Button(new Rect(xPos, yPos, 200, 20), "Set Name")) CmdSetUserName(playerName);
-    }
-
     #endregion
 
     #region PreRound
@@ -270,7 +265,7 @@ public class Player : NetworkBehaviour
         // tell the server to play the card
         CmdPlayCard(handCards[index]);
     }
-    
+
     [Command]
     // ReSharper disable once MemberCanBeMadeStatic.Local
     private void CmdPlayCard(PlayingCard.PlayingCardInfo handCard)
@@ -279,7 +274,7 @@ public class Player : NetworkBehaviour
                   $"sending card {handCard} to the GameManager");
         GameManager.Singleton.CmdHandlePlayCard(handCard);
     }
-    
+
     [Command]
     private void CmdSelectPreRoundChoice(GameManager.RoundMode roundMode, PlayingCard.Suit roundSuit)
     {
