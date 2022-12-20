@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using UnityEngine;
 using UnityEngine.Networking;
@@ -40,6 +41,7 @@ public class GameManager : NetworkBehaviour
         Wenz,
     }
     
+    [SuppressMessage("ReSharper", "UnusedMember.Global")]
     public enum PreRoundChoice
     {
         Weiter,
@@ -58,7 +60,7 @@ public class GameManager : NetworkBehaviour
     public List<Player> players = new List<Player>();
     public List<Button> localPlayerCardButtons;
     public Button dealCardsButton;
-    private Player _startingPlayer; 
+    private Player _roundStartingPlayer; 
     
     [Header("Pre-Round")]
     public GameObject preRoundButtonPanel; 
@@ -112,7 +114,7 @@ public class GameManager : NetworkBehaviour
         if (CurrentGameState == GameState.Waiting)
         {
             // set starting player to the last one so that before the first round the player 0 gets selected
-            _startingPlayer = players[3];
+            _roundStartingPlayer = players[3];
         }
 
         // update the game state
@@ -142,11 +144,11 @@ public class GameManager : NetworkBehaviour
         // disable the dealCards Button
         dealCardsButton.gameObject.SetActive(false);
 
-        // update the starting player
-        _startingPlayer = players.CycleNext(_startingPlayer);
+        // select the next starting player
+        _roundStartingPlayer = players.CycleNext(_roundStartingPlayer);
         
-        // set the current pre round decider to be the starting player
-        _currentPreRoundDecider = _startingPlayer;
+        // the starting player decides first
+        _currentPreRoundDecider = _roundStartingPlayer;
         
         // reset the Round Mode
         CurrentRoundMode = RoundMode.Ramsch;
@@ -168,6 +170,8 @@ public class GameManager : NetworkBehaviour
         
         Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
                   $"entering round with {nameof(CurrentRoundMode)}={CurrentRoundMode}.");
+        
+        
     }
     
     /// <summary>

@@ -3887,6 +3887,11 @@ PrefabInstance:
       propertyPath: m_Name
       value: PlayingCard3
       objectReference: {fileID: 0}
+    - target: {fileID: 822712271965276838, guid: c925273d6f80bc948850aaa0a165c99f,
+        type: 3}
+      propertyPath: m_Interactable
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 822712271965276839, guid: c925273d6f80bc948850aaa0a165c99f,
         type: 3}
       propertyPath: m_LocalPosition.x
