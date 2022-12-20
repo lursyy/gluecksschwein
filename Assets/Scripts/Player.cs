@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Reflection;
 using UnityEngine;
 using UnityEngine.Networking;
 using UnityEngine.UI;
@@ -14,18 +15,21 @@ public class Player : NetworkBehaviour
     
     public override void OnStartServer()
     {
-        Debug.Log($"Player::OnStartServer: I am player {netId} on the server");
+        Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
+                  $"I am player {netId} on the server");
         GameManager.Singleton.AddPlayer(this);
     }
 
     public override void OnStartClient()
     {
-        Debug.Log($"Player::OnStartClient: I am player {netId} on the client");
+        Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
+                  $"I am player {netId} on the client");
     }
 
     public override void OnStartLocalPlayer()
     {
-        Debug.Log($"Player::OnStartLocalPlayer: I am player {netId} on the local player");
+        Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
+                  $"I am player {netId} on the local player");
         // GameManager.Singleton.localPlayer = this;
         _handButtons = GameManager.Singleton.localPlayerCardButtons;
         
@@ -43,7 +47,8 @@ public class Player : NetworkBehaviour
     {
         if (isLocalPlayer)
         {
-            Debug.Log($"(Local) Player {netId} was notified of a change in his hand: card {index}: {handCards[index]}");
+            Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
+                      $"Player {netId} was notified of a change in his hand: card {index}: {handCards[index]}");
             _handButtons[index].image.sprite = PlayingCard.SpriteDict[handCards[index]];
             _handButtons[index].onClick.RemoveAllListeners();
             _handButtons[index].onClick.AddListener(() => OnClickCardButton(index));
@@ -66,19 +71,29 @@ public class Player : NetworkBehaviour
     [Command]
     private void CmdPlayCard(PlayingCard.PlayingCardInfo handCard)
     {
-        Debug.Log($"Player::CmdPlayCard: sending card {handCard} to the GameManager");
+        Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
+                  $"sending card {handCard} to the GameManager");
         GameManager.Singleton.CmdPlayCard(handCard);
     }
 
     [Command]
     private void CmdSetUserName(string newName)
     {
-        Debug.Log($"Cmd: Player {netId} was asked to change name");
+        Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
+                  $"Player {netId} was asked to change name");
         playerName = newName;
         name = newName;
         RpcSetUserName(newName);
     }
     
+    [Command]
+    private void CmdSelectPreRoundChoice(GameManager.PreRoundChoice choice)
+    {
+        Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
+                  $"player {netId} sending choice {choice} to the GameManager");
+        GameManager.Singleton.CmdSelectPreRoundChoice(netId, choice);
+    }
+
     #endregion
 
     #region Client Functions
@@ -88,7 +103,8 @@ public class Player : NetworkBehaviour
     public void RpcSetUserName(string newName)
     {
         // if (!isLocalPlayer) {return;}
-        Debug.Log($"Rpc: Player {netId} was asked to change name");
+        Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
+                  $"Player {netId} was asked to change name");
         playerName = newName;
         name = newName;
     }
@@ -96,7 +112,7 @@ public class Player : NetworkBehaviour
     [Client]
     private void OnGUI()
     {
-        if (!isLocalPlayer || GameManager.Singleton.currentGameState > GameManager.GameState.GameRunning) return;
+        if (!isLocalPlayer || GameManager.Singleton.CurrentGameState > GameManager.GameState.GameRunning) return;
 
         var xpos = 30;
         var ypos = 100;
@@ -118,23 +134,29 @@ public class Player : NetworkBehaviour
         // are we on the client that is controlling this player? otherwise, stop here
         if (!isLocalPlayer) { return; }
         
-        Debug.Log($"{nameof(Player)}::{nameof(RpcDisplayPreRoundButtons)}:" +
+        Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
                   $"client {netId} was asked to display the preRound buttons");
         
         // make the button panel visible
         GameManager.Singleton.preRoundButtonPanel.gameObject.SetActive(true);
 
-        // (the onClick Listeners are already hooked up via the inspector)
+        GameManager.Singleton.preRoundSauspielDropdown.onValueChanged.AddListener(OnPreRoundChooseSauSpiel);
+        GameManager.Singleton.preRoundSoloButton.onClick.AddListener(OnPreRoundChooseSolo);
+        GameManager.Singleton.preRoundWenzButton.onClick.AddListener(OnPreRoundChooseWenz);
+        GameManager.Singleton.preRoundWeiterButton.onClick.AddListener(OnPreRoundChooseWeiter);
     }
 
-    [Client]
-    public void OnPreRoundChooseSauSpiel()
+    public void OnPreRoundChooseSauSpiel(int sauChoiceInt)
     {
         if (!isLocalPlayer) { return; }
         
-        Debug.Log($"Player {netId} chose Sauspiel");
+        GameManager.PreRoundChoice sauChoice = (GameManager.PreRoundChoice) (sauChoiceInt - 1);
+        
+        Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
+                  $"Player {netId} chose Sauspiel {sauChoice}");
+        
         RemovePreRoundButtons();
-        CmdSelectPreRoundChoice(GameManager.PreRoundChoice.Sauspiel);
+        CmdSelectPreRoundChoice(sauChoice);
     }
 
     [Client]
@@ -164,13 +186,7 @@ public class Player : NetworkBehaviour
         throw new NotImplementedException();
     }
 
-    [Command]
-    private void CmdSelectPreRoundChoice(GameManager.PreRoundChoice choice)
-    {
-        Debug.Log($"{nameof(Player)}::{nameof(CmdSelectPreRoundChoice)}: player {netId} sending choice {choice} to the GameManager");
-        GameManager.Singleton.CmdSelectPreRoundChoice(netId, choice);
-    }
-
+    [Client]
     private void RemovePreRoundButtons()
     {
         // disable button panel again
@@ -180,8 +196,6 @@ public class Player : NetworkBehaviour
         // TODO I think we don't need to do that because the buttons are only displayed for one player at a time
         
     }
-
     
-
     #endregion
 }
