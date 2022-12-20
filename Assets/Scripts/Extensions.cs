@@ -40,14 +40,14 @@ public static class Extensions
     }
 
 
-    public static PlayingCard.PlayingCardInfo CalculateWinningCard(this PlayingCard.Stich stich)
+    public static PlayingCard.PlayingCardInfo CalculateWinningCard(this PlayingCard.Stich stich, PlayingCard.Suit trumpSuit)
     {
         if (!stich.IsComplete)
         {
             throw new InvalidOperationException("Cannot calculate winning card for incomplete stich");
         }
         
-        Debug.LogError($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}:" +
+        Debug.LogWarning($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}:" +
                        "Dummy calculation, simply picking random card");
 
         // TODO actual implementation (add parameters that are necessary for calculation, e.g. current Trump Suit)
@@ -57,14 +57,14 @@ public static class Extensions
         return winningCard;
     }
 
-    public static int CalculateStichWorth(this PlayingCard.Stich stich)
+    public static int CalculateStichWorth(this PlayingCard.Stich stich, GameManager.RoundMode roundMode)
     {
         if (!stich.IsComplete)
         {
             throw new InvalidOperationException("Cannot calculate winning card for incomplete stich");
         }
         
-        Debug.LogError($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}:" +
+        Debug.LogWarning($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}:" +
                        "Dummy calculation, simply returning random number");
 
         int stichWorth = 0;
