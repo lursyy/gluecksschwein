@@ -9,11 +9,31 @@ public static class PlayingCard
     // use struct for easy serialization in SyncList
     public struct PlayingCardInfo
     {
-        public Rank Rank;
-        public Suit Suit;
+        public readonly Rank Rank;
+        public readonly Suit Suit;
+
+        public PlayingCardInfo(Rank rank, Suit suit)
+        {
+            Rank = rank;
+            Suit = suit;
+        }
+
         public override string ToString()
         {
             return $"{Suit} {Rank}";
+        }
+
+        public override bool Equals(object obj)
+        {
+            return obj is PlayingCardInfo other && Equals(other);
+        }
+
+        public override int GetHashCode()
+        {
+            unchecked
+            {
+                return ((int) Rank * 397) ^ (int) Suit;
+            }
         }
     }
 
@@ -152,11 +172,7 @@ public static class PlayingCard
         {
             foreach (Rank rank in ranks)
             {
-                PlayingCardInfo cardInfo = new PlayingCardInfo
-                    {
-                        Suit = suit,
-                        Rank = rank,
-                    };
+                PlayingCardInfo cardInfo = new PlayingCardInfo(rank, suit);
                 deck.Add(cardInfo);
                 
                 // also store the sprite in the dictionary for later access

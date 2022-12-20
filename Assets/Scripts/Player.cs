@@ -202,7 +202,7 @@ public class Player : NetworkBehaviour
     #endregion
     
     #region Round
-    
+
     private void OnSyncListHandCardsChanged(SyncList<PlayingCard.PlayingCardInfo>.Operation op, int index)
     {
         if (!isLocalPlayer) return;
@@ -268,5 +268,5 @@ public class Player : NetworkBehaviour
     }
     
     #endregion
-    
+
 }

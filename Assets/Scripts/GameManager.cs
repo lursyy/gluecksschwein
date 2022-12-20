@@ -95,13 +95,20 @@ public class GameManager : NetworkBehaviour
     public Button preRoundWeiterButton;
 
     private Player _roundStartingPlayer;
+
+    /// <summary>
+    /// round groups share their points and "play together"
+    /// </summary>
+    private readonly List<IEnumerable<Player>> _roundGroups = new List<IEnumerable<Player>>();
     
     [SerializeField] private Image[] playedCardSlots = new Image[4];
 
     private readonly SyncListPlayingCard _currentStich = new SyncListPlayingCard();
 
-    // public class SyncListStich : SyncListStruct<PlayingCard.Stich> {}
-    private readonly List<PlayingCard.Stich> _completedStiches = new List<PlayingCard.Stich>();
+    /// <summary>
+    /// Holds the 8 stiches of a round. Is cleared before the start of every round.
+    /// </summary>
+    private readonly Dictionary<PlayingCard.Stich, Player> _completedStiches = new Dictionary<PlayingCard.Stich, Player>();
 
     [Header("Sounds")]
     public AudioClip[] soundPlayCardArray;
@@ -114,6 +121,25 @@ public class GameManager : NetworkBehaviour
     ///////////////////////////////////////////////
     /////////////////// Methods ///////////////////
     ///////////////////////////////////////////////
+    
+    // Start is called before the first frame update
+    private void Awake()
+    {
+        Singleton = this;
+        _cardDeck = PlayingCard.InitializeCardDeck();
+        _currentStich.Callback = OnStichCardsChanged;
+        _audioSource = GetComponent<AudioSource>();
+    }
+
+    public override void OnStartServer()
+    {
+        foreach (PlayingCard.PlayingCardInfo cardInfo in _cardDeck)
+        {
+            _syncListCardDeck.Add(cardInfo);
+        }
+
+        EnterStateWaiting();
+    }
 
     #region Game State Transitions
 
@@ -128,7 +154,7 @@ public class GameManager : NetworkBehaviour
 
     /// <summary>
     /// Used to enter the "Game Running" state
-    /// * show scoreboard
+    /// * players can enter custom names
     /// * host can start a new round
     /// </summary>
     private void EnterStateGameRunning()
@@ -193,11 +219,18 @@ public class GameManager : NetworkBehaviour
         CurrentGameState = GameState.Round;
         _currentTurnPlayer = _roundStartingPlayer;
         _completedStiches.Clear();
+
+        // find out who is playing with whom, for easy scoring later
+        CalculateRoundGroups();
+
         StartStich();
     }
     
     /// <summary>
     /// Used to enter the "Round Finished" state
+    /// * count scores
+    /// * show scoreboard
+    /// * host can start next round
     /// </summary>
     private void EnterStateRoundFinished()
     {
@@ -205,8 +238,22 @@ public class GameManager : NetworkBehaviour
         Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
                   "Round finished!");
         
+        // count scores in stiches, and add to player scores
+        foreach (var entry in _completedStiches)
+        {
+            int stichWorth = entry.Key.CalculateStichWorth();
+            Player stichWinner = entry.Value;
+            throw new NotImplementedException("WIP");
+            // TODO check _roundGroups and add the score to every player in the group?
+        }
+        
         // TODO show scoreboard?
     }
+
+    
+    #endregion
+
+    #region Server Stuff / Commands
 
     [Command]
     public void CmdHandlePreRoundChoice(NetworkInstanceId playerId, PreRoundChoice playerChoice)
@@ -241,29 +288,75 @@ public class GameManager : NetworkBehaviour
             _currentTurnPlayer.RpcDisplayPreRoundButtons(CurrentRoundMode);
         }
     }
-    
-    #endregion
-    
-    // Start is called before the first frame update
-    private void Awake()
-    {
-        Singleton = this;
-        _cardDeck = PlayingCard.InitializeCardDeck();
-        _currentStich.Callback = OnStichCardsChanged;
-        _audioSource = GetComponent<AudioSource>();
-    }
 
-    public override void OnStartServer()
+    [Server]
+    private void CalculateRoundGroups()
     {
-        foreach (PlayingCard.PlayingCardInfo cardInfo in _cardDeck)
+        // first, clear all the old round partners
+        _roundGroups.Clear();
+        
+        // it all depends on the current round mode
+        switch (CurrentRoundMode)
         {
-            _syncListCardDeck.Add(cardInfo);
-        }
+            case RoundMode.Ramsch:
+                // everyone plays on their own, so each player is in a separate group
+                foreach (var player in _players)
+                {
+                    _roundGroups.Add(new List<Player> {player});
+                }
+                break;
+            
+            case RoundMode.SauspielBlatt:
+            case RoundMode.SauspielEichel:
+            case RoundMode.SauspielSchelln:
+                // get the suit that correspond to the current mode
+                PlayingCard.Suit sauSuit = GetSauSuit(CurrentRoundMode);
+                
+                // find the player that has the respective Sau
+                Player sauOwner = _players.Find(player => player.handCards.Contains(
+                    new PlayingCard.PlayingCardInfo(PlayingCard.Rank.Ass, sauSuit)
+                    ));
 
-        EnterStateWaiting();
+                // find the player that has decided to play for the Sau...
+                Player sauPlayer = _players.Find(player =>
+                    CurrentPreRoundChoices[player.netId] == (PreRoundChoice) CurrentRoundMode);
+
+                // there are two groups, one with the above two players, and one with the other two
+                var sauGroup = new [] {sauOwner, sauPlayer};
+                _roundGroups.Add(sauGroup);
+                _roundGroups.Add(_players.Except(sauGroup)); 
+                break;
+            
+            case RoundMode.Solo:
+            case RoundMode.Wenz:
+                // the player who chose the solo/wenz is alone playing against the other 3 players
+                Player alonePlayer = _players.Find(player =>
+                    CurrentPreRoundChoices[player.netId] == (PreRoundChoice) CurrentRoundMode);
+                var alonePlayerGroup = new [] {alonePlayer};
+                _roundGroups.Add(alonePlayerGroup);
+                _roundGroups.Add(_players.Except(alonePlayerGroup));
+                
+                break;
+            default:
+                throw new ArgumentOutOfRangeException();
+        }
     }
 
-    #region Server Stuff / Commands
+    private PlayingCard.Suit GetSauSuit(RoundMode roundMode)
+    {
+        switch (roundMode)
+        {
+            case RoundMode.SauspielBlatt:
+                return PlayingCard.Suit.Blatt;
+            case RoundMode.SauspielEichel:
+                return PlayingCard.Suit.Eichel;
+            case RoundMode.SauspielSchelln:
+                return PlayingCard.Suit.Schelln;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(roundMode), roundMode,
+                    $"trying to get Sau Suit for non sau roundMode {roundMode}");
+        }
+    }
 
     [Command]
     public void CmdHandlePlayCard(PlayingCard.PlayingCardInfo cardInfo)
@@ -302,10 +395,10 @@ public class GameManager : NetworkBehaviour
         Player winningPlayer = _players.Cycle(_currentTurnPlayer, _currentStich.IndexOf(winningCard) + 1);
         
         // let the players know
-        _gameStateText = $"{winningPlayer.playerName} gewinnt mit {winningCard}!";
+        _gameStateText = $"{winningPlayer.playerName} gewinnt mit {winningCard}...";
         
         // add the stich to the completed stiches
-        _completedStiches.Add(currentStichStruct);
+        _completedStiches[currentStichStruct] = winningPlayer;
         
         // the winning player starts with the next stich
         _currentTurnPlayer = winningPlayer;
