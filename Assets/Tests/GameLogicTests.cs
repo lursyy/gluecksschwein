@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using UnityEngine;
@@ -82,67 +81,24 @@ namespace Tests
             // we should have removed every element from the expected groups
             Assert.AreEqual(0, expectedGroups.Count);
         }
-
-        [Test]
-        public void ScoreBoardRow_AddSingleEntry()
-        {
-            var row = new Extensions.ScoreBoardRow();
-            Assert.AreEqual(0, row.entryCount);
-
-            row.AddEntry("Luis", 42);
-
-            Assert.AreEqual(1, row.entryCount);
-        }
-
-        [Test]
-        public void ScoreBoardRow_Add4Entries()
-        {
-            var row = new Extensions.ScoreBoardRow();
-            Assert.AreEqual(0, row.entryCount);
-
-            row.AddEntry("Lukian", 42);
-            Assert.AreEqual(1, row.entryCount);
-
-            row.AddEntry("Nuria", 26);
-            Assert.AreEqual(2, row.entryCount);
-
-            row.AddEntry("Lena", 13);
-            Assert.AreEqual(3, row.entryCount);
-
-            row.AddEntry("Meo", 99);
-            Assert.AreEqual(4, row.entryCount);
-        }
-
-        [Test]
-        public void ScoreBoardRow_AddTooMuchEntries()
-        {
-            var row = new Extensions.ScoreBoardRow();
-            Assert.AreEqual(0, row.entryCount);
-
-            row.AddEntry("Lukian", 51);
-            row.AddEntry("Nuria", 26);
-            row.AddEntry("Lena", 13);
-            row.AddEntry("Meo", 99);
-
-            Assert.AreEqual(4, row.entryCount);
-
-            Assert.Catch<InvalidOperationException>(() => row.AddEntry("Luis", 42));
-
-            Assert.AreEqual(4, row.entryCount);
-        }
-
+        
         [Test]
         public void ScoreBoardRow_AmendExistingEntry()
         {
-            var row = new Extensions.ScoreBoardRow();
-            Assert.AreEqual(0, row.entryCount);
-
-            row.AddEntry("Luis", 15);
-            Assert.AreEqual(1, row.entryCount);
+            var entries = new[]
+            {
+                new Extensions.ScoreBoardEntry("Luis", 15),
+                new Extensions.ScoreBoardEntry(),
+                new Extensions.ScoreBoardEntry(),
+                new Extensions.ScoreBoardEntry()
+            };
+            
+            var row = new Extensions.ScoreBoardRow(entries);
+            
+            Assert.AreEqual(4, row.Entries.Length);
             Assert.AreEqual(15, row.Entries[0].score);
 
-            row.AddEntry("Luis", 27);
-            Assert.AreEqual(1, row.entryCount);
+            row.Entries[0].score += 27;
             Assert.AreEqual(42, row.Entries[0].score);
         }
     }

@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.InteropServices;
 using Unity.Collections;
 using Unity.Netcode;
@@ -142,7 +141,7 @@ public static class Extensions
         public readonly FixedString32Bytes name;
         public int score;
 
-        internal ScoreBoardEntry(String name, int score)
+        public ScoreBoardEntry(String name, int score)
         {
             this.name = name;
             this.score = score;

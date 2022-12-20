@@ -3,8 +3,7 @@
     "references": [
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner",
-        "GameAssembly",
-        "com.unity.multiplayer-hlapi.Runtime"
+        "GameAssembly"
     ],
     "includePlatforms": [
         "Editor"
