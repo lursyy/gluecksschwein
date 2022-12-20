@@ -71,7 +71,7 @@ public class GameManager : NetworkBehaviour
     [Server]
     public void AddPlayer(Player player)
     {
-        Debug.Log($"GameManager::AddPlayer called, adding player {players.Count} with netId {player.netId}");
+        Debug.Log($"GameManager::AddPlayer called, adding Player {player.netId}");
         if (!isServer)
         {
             Debug.LogError("GameManager::AddPlayer should only be called on the server!");
@@ -98,6 +98,8 @@ public class GameManager : NetworkBehaviour
         int handedCards = 0;
         foreach (Player player in players)
         {
+            Debug.Log($"GameManager::CmdDealCards: Player {player.netId} should get " +
+                      $"cards {handedCards} to {handedCards+7}");
             // this updates the player's cards on the server object, which then notifies his respective client object
             player.CmdDrawHand(handedCards, 8);
 
