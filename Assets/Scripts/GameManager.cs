@@ -32,7 +32,7 @@ public class GameManager : NetworkBehaviour
     }
     
     [field: SyncVar] public GameState CurrentGameState { get; private set; }
-    [field: SyncVar] public RoundMode CurrentRoundMode { get; private set; }
+    [field: SyncVar] private RoundMode CurrentRoundMode { get; set; }
 
     private Dictionary<NetworkInstanceId, PreRoundChoice> CurrentPreRoundChoices { get; } =
         new Dictionary<NetworkInstanceId, PreRoundChoice>();
@@ -50,7 +50,7 @@ public class GameManager : NetworkBehaviour
         SauspielEichel,
         SauspielSchelln,
         Solo,
-        Wenz,
+        Wenz
     }
     
     [SuppressMessage("ReSharper", "UnusedMember.Global")]
@@ -61,7 +61,7 @@ public class GameManager : NetworkBehaviour
         SauspielEichel,
         SauspielSchelln,
         Solo,
-        Wenz,
+        Wenz
     }
 
     private readonly List<Player> _players = new List<Player>();
@@ -140,7 +140,6 @@ public class GameManager : NetworkBehaviour
         _gameStateText = "Bereit zum spielen";
         dealCardsButton.gameObject.SetActive(true);
         dealCardsButton.onClick.AddListener(EnterStatePreRound);
-        // TODO: show scoreboard
     }
 
     /// <summary>
@@ -198,7 +197,7 @@ public class GameManager : NetworkBehaviour
     {
         CurrentGameState = GameState.RoundFinished;
         Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
-                  $"Round finished!");
+                  "Round finished!");
         
         // TODO show scoreboard?
     }
@@ -346,7 +345,7 @@ public class GameManager : NetworkBehaviour
                   $"adding Player {player.netId}");
         _players.Add(player);
         
-        _gameStateText = $"Warte auf Spieler... ({_players.Count})";
+        _gameStateText = $"Warte auf {4-_players.Count} Spieler... ";
 
         if (_players.Count == 4)
         {
@@ -359,7 +358,7 @@ public class GameManager : NetworkBehaviour
     /// card 00-07 to player 1, card 08-15 to player 2, card 16-23 to player 3, card 24-31 to player 4
     /// </summary>
     [Server]
-    public void DealCards()
+    private void DealCards()
     {
         int handedCards = 0;
         foreach (Player player in _players)

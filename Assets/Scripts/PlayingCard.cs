@@ -85,7 +85,7 @@ public static class PlayingCard
     
     
     public static readonly Dictionary<PlayingCardInfo, Sprite> SpriteDict = new Dictionary<PlayingCardInfo, Sprite>();
-    public static readonly Sprite DefaultCardSprite = Resources.Load<Sprite>($"Spielkarten/rueckseite");
+    public static readonly Sprite DefaultCardSprite = Resources.Load<Sprite>("Spielkarten/rueckseite");
     
     private static Sprite LoadSprite(PlayingCardInfo cardInfo)
     {

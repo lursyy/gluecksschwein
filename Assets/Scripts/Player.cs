@@ -58,7 +58,7 @@ public class Player : NetworkBehaviour
     }
     
     [ClientRpc]
-    public void RpcSetUserName(string newName)
+    private void RpcSetUserName(string newName)
     {
         // if (!isLocalPlayer) {return;}
         Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
@@ -72,15 +72,15 @@ public class Player : NetworkBehaviour
     {
         if (!isLocalPlayer || GameManager.Singleton.CurrentGameState > GameManager.GameState.GameRunning) return;
 
-        var xpos = 30;
-        var ypos = 100;
+        const int xPos = 30;
+        int yPos = 100;
 
-        GUI.Label(new Rect(xpos, ypos, 100, 20), "Player Name:");
-        playerName = GUI.TextField(new Rect(xpos + 100, ypos, 100, 20), playerName);
+        GUI.Label(new Rect(xPos, yPos, 100, 20), "Player Name:");
+        playerName = GUI.TextField(new Rect(xPos + 100, yPos, 100, 20), playerName);
 
-        ypos += 20;
+        yPos += 20;
 
-        if (GUI.Button(new Rect(xpos, ypos, 200, 20), "Set Name"))
+        if (GUI.Button(new Rect(xPos, yPos, 200, 20), "Set Name"))
         {
             CmdSetUserName(playerName);
         }
