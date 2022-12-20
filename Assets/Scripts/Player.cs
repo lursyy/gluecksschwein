@@ -128,7 +128,7 @@ public class Player : NetworkBehaviour
     }
 
     [Client]
-    public void PreRoundOnChooseSauSpiel()
+    public void OnPreRoundChooseSauSpiel()
     {
         if (!isLocalPlayer) { return; }
         RemovePreRoundButtons();
@@ -137,7 +137,7 @@ public class Player : NetworkBehaviour
     }
 
     [Client]
-    public void PreRoundOnChooseSolo()
+    public void OnPreRoundChooseSolo()
     {
         if (!isLocalPlayer) { return; }
         RemovePreRoundButtons();
@@ -146,7 +146,7 @@ public class Player : NetworkBehaviour
     }
 
     [Client]
-    public void PreRoundOnChooseWenz()
+    public void OnPreRoundChooseWenz()
     {
         if (!isLocalPlayer) { return; }
         RemovePreRoundButtons();
@@ -155,7 +155,7 @@ public class Player : NetworkBehaviour
     }
 
     [Client]
-    public void PreRoundOnChooseWeiter()
+    public void OnPreRoundChooseWeiter()
     {
         if (!isLocalPlayer) { return; }
         RemovePreRoundButtons();

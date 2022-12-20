@@ -557,7 +557,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 2549823454822184939, guid: d48d1970fe432fa40a5f61de6c7283f9,
           type: 3}
-        m_MethodName: PreRoundOnChooseWeiter
+        m_MethodName: OnPreRoundChooseWeiter
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -1263,7 +1263,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 2549823454822184939, guid: d48d1970fe432fa40a5f61de6c7283f9,
           type: 3}
-        m_MethodName: PreRoundOnChooseSolo
+        m_MethodName: OnPreRoundChooseSolo
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -1796,7 +1796,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 2549823454822184939, guid: d48d1970fe432fa40a5f61de6c7283f9,
           type: 3}
-        m_MethodName: PreRoundOnChooseWenz
+        m_MethodName: OnPreRoundChooseWenz
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -1926,7 +1926,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 2549823454822184939, guid: d48d1970fe432fa40a5f61de6c7283f9,
           type: 3}
-        m_MethodName: PreRoundOnChooseSauSpiel
+        m_MethodName: OnPreRoundChooseSauSpiel
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
