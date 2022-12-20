@@ -8,9 +8,9 @@ using UnityEngine.UI;
 
 public class Player : NetworkBehaviour
 {
-    public GameManager.SyncListPlayingCard handCards = new GameManager.SyncListPlayingCard();
-    private List<Button> _handButtons;
     public string playerName;
+    private List<Button> _handButtons;
+    public readonly GameManager.SyncListPlayingCard handCards = new GameManager.SyncListPlayingCard();
 
     #region General
 
@@ -76,17 +76,14 @@ public class Player : NetworkBehaviour
         if (!isLocalPlayer || GameManager.Singleton.CurrentGameState > GameManager.GameState.GameRunning) return;
 
         const int xPos = 30;
-        int yPos = 100;
+        var yPos = 100;
 
         GUI.Label(new Rect(xPos, yPos, 100, 20), "Player Name:");
         playerName = GUI.TextField(new Rect(xPos + 100, yPos, 100, 20), playerName);
 
         yPos += 20;
 
-        if (GUI.Button(new Rect(xPos, yPos, 200, 20), "Set Name"))
-        {
-            CmdSetUserName(playerName);
-        }
+        if (GUI.Button(new Rect(xPos, yPos, 200, 20), "Set Name")) CmdSetUserName(playerName);
     }
 
     #endregion
@@ -97,10 +94,7 @@ public class Player : NetworkBehaviour
     public void RpcDisplayPreRoundButtons(GameManager.RoundMode currentRoundMode)
     {
         // are we on the client that is controlling this player? otherwise, stop here
-        if (!isLocalPlayer)
-        {
-            return;
-        }
+        if (!isLocalPlayer) return;
 
         Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
                   $"client {netId} was asked to display the preRound buttons, {nameof(currentRoundMode)}={currentRoundMode}");
@@ -137,22 +131,16 @@ public class Player : NetworkBehaviour
 
     private void OnPreRoundChooseSauSpiel(int sauChoiceInt)
     {
-        if (!isLocalPlayer)
-        {
-            return;
-        }
+        if (!isLocalPlayer) return;
         HidePreRoundButtons();
 
         Assert.IsTrue(0 <= sauChoiceInt && sauChoiceInt < 4);
 
         // do nothing if the player clicked the first dropdown item (which simply says "Sauspiel...")
-        if (sauChoiceInt == 0)
-        {
-            return;
-        }
+        if (sauChoiceInt == 0) return;
 
         // otherwise, convert the clicked item index into a choice
-        PlayingCard.Suit sauSuit = (PlayingCard.Suit) sauChoiceInt - 1;
+        var sauSuit = (PlayingCard.Suit) sauChoiceInt - 1;
 
         CmdSelectPreRoundChoice(GameManager.RoundMode.Sauspiel, sauSuit);
     }
@@ -160,23 +148,17 @@ public class Player : NetworkBehaviour
     [Client]
     private void OnPreRoundChooseSolo(int soloChoiceInt)
     {
-        if (!isLocalPlayer)
-        {
-            return;
-        }
+        if (!isLocalPlayer) return;
         HidePreRoundButtons();
-        
+
         // 0: nothing, 1-4: Suit Selection
         Assert.IsTrue(0 <= soloChoiceInt && soloChoiceInt <= 4);
 
         // do nothing if the player clicked the first dropdown item
-        if (soloChoiceInt == 0)
-        {
-            return;
-        }
+        if (soloChoiceInt == 0) return;
 
         // otherwise, directly convert the clicked item index
-        PlayingCard.Suit additionalTrumps = (PlayingCard.Suit) soloChoiceInt - 1;
+        var additionalTrumps = (PlayingCard.Suit) soloChoiceInt - 1;
 
         CmdSelectPreRoundChoice(GameManager.RoundMode.FarbSolo, additionalTrumps);
     }
@@ -184,13 +166,10 @@ public class Player : NetworkBehaviour
     [Client]
     private void OnPreRoundChooseWenz(int wenzChoiceInt)
     {
-        if (!isLocalPlayer)
-        {
-            return;
-        }
+        if (!isLocalPlayer) return;
         HidePreRoundButtons();
 
-        
+
         // 0: nothing, 1-4: FarbWenz Suit Selection, 5: Normal Wenz
         Assert.IsTrue(0 <= wenzChoiceInt && wenzChoiceInt <= 5);
 
@@ -207,7 +186,7 @@ public class Player : NetworkBehaviour
             default:
             {
                 // otherwise, directly convert the clicked item index
-                PlayingCard.Suit additionalTrumps = (PlayingCard.Suit) wenzChoiceInt - 1;
+                var additionalTrumps = (PlayingCard.Suit) wenzChoiceInt - 1;
                 CmdSelectPreRoundChoice(GameManager.RoundMode.FarbWenz, additionalTrumps);
                 break;
             }
@@ -217,10 +196,7 @@ public class Player : NetworkBehaviour
     [Client]
     private void OnPreRoundChooseWeiter()
     {
-        if (!isLocalPlayer)
-        {
-            return;
-        }
+        if (!isLocalPlayer) return;
 
         HidePreRoundButtons();
 
@@ -235,10 +211,7 @@ public class Player : NetworkBehaviour
     [Client]
     private void HidePreRoundButtons()
     {
-        if (!isLocalPlayer)
-        {
-            return;
-        }
+        if (!isLocalPlayer) return;
 
         // disable the button panel
         GameManager.Singleton.preRoundButtonPanel.gameObject.SetActive(false);
@@ -286,7 +259,7 @@ public class Player : NetworkBehaviour
     }
 
     [Client]
-    void OnClickCardButton(int index)
+    private void OnClickCardButton(int index)
     {
         // disable the button GameObject so we cannot play the card again
         _handButtons[index].gameObject.SetActive(false);
@@ -295,16 +268,7 @@ public class Player : NetworkBehaviour
         _handButtons.ForEach(button => button.interactable = false);
 
         // tell the server to play the card
-        CmdPlayCard(handCards[index]);
-    }
-
-
-    [Command]
-    private void CmdPlayCard(PlayingCard.PlayingCardInfo handCard)
-    {
-        Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
-                  $"sending card {handCard} to the GameManager");
-        GameManager.Singleton.CmdHandlePlayCard(handCard);
+        GameManager.Singleton.CmdHandlePlayCard(handCards[index]);
     }
 
     [Command]
@@ -316,15 +280,12 @@ public class Player : NetworkBehaviour
     }
 
     /// <summary>
-    /// enables the hand buttons for the local player. Disables the buttons for every other player
+    ///     enables the hand buttons for the local player. Disables the buttons for every other player
     /// </summary>
     [ClientRpc]
     public void RpcStartTurn()
     {
-        if (!isLocalPlayer)
-        {
-            return;
-        }
+        if (!isLocalPlayer) return;
 
         // enable the card buttons
         _handButtons.ForEach(button => button.interactable = true);

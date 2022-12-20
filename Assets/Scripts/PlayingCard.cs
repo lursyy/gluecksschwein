@@ -6,7 +6,54 @@ using UnityEngine.Assertions;
 
 public static class PlayingCard
 {
+    #region Stich Definition
+
+    public struct Stich
+    {
+        private Stack<PlayingCardInfo> _cards;
+        public int CardCount => _cards.Count;
+
+        public bool IsComplete => CardCount == 4;
+
+        public void AddCard(PlayingCardInfo card)
+        {
+            if (_cards == null) _cards = new Stack<PlayingCardInfo>(4);
+
+            if (IsComplete) throw new InvalidOperationException("Stich already complete, cannot add card");
+
+            _cards.Push(card);
+        }
+
+        public void AddAll(IEnumerable<PlayingCardInfo> cards)
+        {
+            foreach (var card in cards) AddCard(card);
+        }
+
+        // hopefully we never need this
+        public PlayingCardInfo[] Cards => _cards.ToArray();
+
+        public PlayingCardInfo RemoveTop()
+        {
+            return _cards.Pop();
+        }
+
+        public PlayingCardInfo Top => _cards.Peek();
+
+        public int Worth
+        {
+            get
+            {
+                // Currently, there shouldn't be any reason to query the worth of an an incomplete stich.
+                Assert.IsTrue(IsComplete);
+                return _cards.Sum(card => card.Worth);
+            }
+        }
+    }
+
+    #endregion
+
     #region Playing Card Definition
+
     // use struct for easy serialization in SyncList
     public readonly struct PlayingCardInfo
     {
@@ -21,15 +68,12 @@ public static class PlayingCard
 
         public PlayingCardInfo(IReadOnlyList<char> suitRank)
         {
-            if (suitRank.Count != 2)
-            {
-                throw new ArgumentException("String param has to consist of 2 characters");
-            }
+            if (suitRank.Count != 2) throw new ArgumentException("String param has to consist of 2 characters");
 
             suit = SuitFromChar(suitRank[0]);
             rank = RankFromChar(suitRank[1]);
         }
-        
+
         public override string ToString()
         {
             return $"{suit} {rank}";
@@ -37,10 +81,7 @@ public static class PlayingCard
 
         public override bool Equals(object otherObj)
         {
-            if (otherObj is PlayingCardInfo other)
-            {
-                return suit == other.suit && rank == other.rank;
-            }
+            if (otherObj is PlayingCardInfo other) return suit == other.suit && rank == other.rank;
 
             return base.Equals(otherObj);
         }
@@ -91,23 +132,21 @@ public static class PlayingCard
      * We order the ranks by their default precedence
      * (i.e. when no trumps are involved), so we can use
      * the enum order directly when comparing cards.
-     *
-     * This ordering will also be helpful if we decide to use
-     * our saulib library for determining the stich winner later.
+     * (The trumps are evaluated separately, so we can "mix them in" here)
      */
     public enum Rank
     {
         Sieben = 7,
         Acht,
         Neun,
+        Unter,
+        Ober,
         Koenig,
         Zehn,
-        Ass,
-        Unter,
-        Ober
+        Ass
     }
-    
-     
+
+
     private static Suit SuitFromChar(char charSuit)
     {
         switch (charSuit)
@@ -145,73 +184,17 @@ public static class PlayingCard
                                             $"but was {charRank}");
         }
     }
-    #endregion
-
-    #region Stich Definition
-
-    public struct Stich
-    {
-        private Stack<PlayingCardInfo> _cards;
-        public int CardCount => _cards.Count;
-
-        public bool IsComplete => CardCount == 4;
-
-        public void AddCard(PlayingCardInfo card)
-        {
-            if (_cards == null)
-            {
-                _cards = new Stack<PlayingCardInfo>(4);
-            }
-            
-            if (IsComplete)
-            {
-                throw new InvalidOperationException("Stich already complete, cannot add card");
-            }
-
-            _cards.Push(card);
-        }
-
-        public void AddAll(IEnumerable<PlayingCardInfo> cards)
-        {
-            foreach (PlayingCardInfo card in cards)
-            {
-                AddCard(card);
-            }
-        }
-        
-        // hopefully we never need this
-        public PlayingCardInfo[] Cards => _cards.ToArray();
-
-        public PlayingCardInfo RemoveTop()
-        {
-            return _cards.Pop();
-        }
-
-        public PlayingCardInfo Top => _cards.Peek();
-
-        public int Worth
-        {
-            get
-            {
-                // Currently, there shouldn't be any reason to query the worth of an an incomplete stich.
-                Assert.IsTrue(IsComplete);
-                return _cards.Sum(card => card.Worth);
-            }
-        }
-        
-    }
 
     #endregion
-    
+
     #region Static Variables and Helpers
-    
-    
+
     public static readonly Dictionary<PlayingCardInfo, Sprite> SpriteDict = new Dictionary<PlayingCardInfo, Sprite>();
     public static readonly Sprite DefaultCardSprite = Resources.Load<Sprite>("Spielkarten/rueckseite");
-    
+
     private static Sprite LoadSprite(PlayingCardInfo cardInfo)
     {
-        string pathSuffix = "";
+        var pathSuffix = "";
         pathSuffix += cardInfo.suit.ToString().ToLower();
         pathSuffix += GetRankFileSuffix(cardInfo.rank);
         return Resources.Load<Sprite>($"Spielkarten/{pathSuffix}");
@@ -261,30 +244,27 @@ public static class PlayingCard
     }
 
     /// <summary>
-    /// Make sure to only call this method ONCE, because it loads all the sprites
+    ///     Make sure to only call this method ONCE, because it loads all the sprites
     /// </summary>
     /// <returns></returns>
     public static List<PlayingCardInfo> InitializeCardDeck()
     {
         var deck = new List<PlayingCardInfo>();
-        
+
         var ranks = Enum.GetValues(typeof(Rank));
         var suits = Enum.GetValues(typeof(Suit));
         foreach (Suit suit in suits)
+        foreach (Rank rank in ranks)
         {
-            foreach (Rank rank in ranks)
-            {
-                PlayingCardInfo cardInfo = new PlayingCardInfo(suit, rank);
-                deck.Add(cardInfo);
-                
-                // also store the sprite in the dictionary for later access
-                SpriteDict[cardInfo] = LoadSprite(cardInfo);
-            }
+            var cardInfo = new PlayingCardInfo(suit, rank);
+            deck.Add(cardInfo);
+
+            // also store the sprite in the dictionary for later access
+            SpriteDict[cardInfo] = LoadSprite(cardInfo);
         }
 
         return deck;
     }
 
     #endregion
-
 }

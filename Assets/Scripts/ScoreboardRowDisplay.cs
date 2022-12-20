@@ -11,9 +11,6 @@ public class ScoreboardRowDisplay : MonoBehaviour
     {
         Assert.AreEqual(scoreTexts.Count, scores.Count);
 
-        for (var i = 0; i < scoreTexts.Count; i++)
-        {
-            scoreTexts[i].text = scores[i].ToString();
-        }
+        for (var i = 0; i < scoreTexts.Count; i++) scoreTexts[i].text = scores[i].ToString();
     }
 }

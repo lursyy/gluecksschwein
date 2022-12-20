@@ -4,7 +4,6 @@ using UnityEngine;
 using UnityEngine.Networking;
 using UnityEngine.Networking.Match;
 using UnityEngine.UI;
-using Random = UnityEngine.Random;
 
 #pragma warning disable 618
 
@@ -12,8 +11,6 @@ using Random = UnityEngine.Random;
 // ReSharper disable once InconsistentNaming
 public class CustomNetworkHUD : MonoBehaviour
 {
-    private NetworkManager _manager;
-
     [SerializeField] private GameObject lobbyPanel;
 
     [SerializeField] private Button hostGameButton;
@@ -24,29 +21,35 @@ public class CustomNetworkHUD : MonoBehaviour
     [SerializeField] private Button joinGameButtonPrefab;
 
     [SerializeField] private float refreshIntervalSeconds = 1f;
+    private NetworkManager _manager;
     private float _nextRefreshTime;
     private bool _uiActive = true;
 
     private void Awake()
     {
         lobbyPanel.SetActive(true);
-        
+
         _manager = GetComponent<NetworkManager>();
         _manager.StartMatchMaker();
-        
+
         // randomize the default match name
         hostGameInputField.text = $"Spiel {Random.Range(1, 100)}";
-        
+
         // empty match name is not allowed
         hostGameInputField.onValueChanged.AddListener(val => hostGameButton.interactable = val != "");
     }
 
+    private void OnGUI()
+    {
+        if (Time.time >= _nextRefreshTime) RefreshMatches();
+    }
+
     /// <summary>
-    /// Host a new game with a given name
+    ///     Host a new game with a given name
     /// </summary>
     public void CreateMatch()
     {
-        string matchName = hostGameInputField.text;
+        var matchName = hostGameInputField.text;
         _manager.matchMaker.CreateMatch(matchName, _manager.matchSize, true, "", "", "", 0, 0,
             OnMatchCreate);
     }
@@ -67,37 +70,23 @@ public class CustomNetworkHUD : MonoBehaviour
 
     private void JoinMatch(MatchInfoSnapshot matchInfo)
     {
-        if (_manager.matchMaker == null)
-        {
-            _manager.StartMatchMaker();
-        }
+        if (_manager.matchMaker == null) _manager.StartMatchMaker();
 
         _manager.matchMaker.JoinMatch(matchInfo.networkId, "", "", "", 0, 0, OnMatchJoined);
     }
 
     private void OnMatchJoined(bool success, string extendedInfo, MatchInfo responseData)
-    { 
+    {
         DisableUi();
         // forward the callback to the network manager
         _manager.OnMatchJoined(success, extendedInfo, responseData);
     }
 
-    private void OnGUI()
-    {
-        if (Time.time >= _nextRefreshTime)
-        {
-            RefreshMatches();
-        }
-    }
-
     private void RefreshMatches()
     {
         _nextRefreshTime += refreshIntervalSeconds;
-        
-        if (_manager.matchMaker == null)
-        {
-            _manager.StartMatchMaker();
-        }
+
+        if (_manager.matchMaker == null) _manager.StartMatchMaker();
 
         if (!_uiActive) return;
 
@@ -113,14 +102,11 @@ public class CustomNetworkHUD : MonoBehaviour
 
     private void UpdateJoinMatchButtons()
     {
-        bool hasMatches = _manager.matches != null && _manager.matches.Count > 0;
+        var hasMatches = _manager.matches != null && _manager.matches.Count > 0;
         joinGamePanel.SetActive(hasMatches);
 
         // clear the old buttons
-        foreach (Transform button in joinGameButtonList)
-        {
-            Destroy(button.gameObject);
-        }
+        foreach (Transform button in joinGameButtonList) Destroy(button.gameObject);
 
         if (!hasMatches) return;
         foreach (var matchInfo in _manager.matches)

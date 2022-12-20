@@ -7,13 +7,13 @@ namespace Tests
     public class PlayingCardTests
     {
         private List<PlayingCard.PlayingCardInfo> _cardDeck;
-        
+
         [SetUp]
         public void Setup()
         {
             _cardDeck = PlayingCard.InitializeCardDeck();
         }
-        
+
         [Test]
         public void PlayingCardEquals()
         {
@@ -39,6 +39,5 @@ namespace Tests
             var totalCardWorth = _cardDeck.Sum(c => c.Worth);
             Assert.AreEqual(120, totalCardWorth);
         }
-
     }
 }

@@ -12,14 +12,35 @@ using UnityEngine.UI;
 [RequireComponent(typeof(AudioSource))]
 public class GameManager : NetworkBehaviour
 {
-    public static GameManager Singleton { get; private set; }
-
     #region Changeable Constants
 
     [Header("Constant Parameters")] [SerializeField]
     private int secondsPauseAfterStich = 4;
 
     #endregion
+
+    public static GameManager Singleton { get; private set; }
+
+
+    ///////////////////////////////////////////////
+    /////////////////// Methods ///////////////////
+    ///////////////////////////////////////////////
+
+    // Start is called before the first frame update
+    private void Awake()
+    {
+        Singleton = this;
+        _cardDeck = PlayingCard.InitializeCardDeck();
+        _currentStich.Callback = OnStichCardsChanged;
+        _audioSource = GetComponent<AudioSource>();
+    }
+
+    public override void OnStartServer()
+    {
+        foreach (var cardInfo in _cardDeck) _syncListCardDeck.Add(cardInfo);
+
+        EnterStateWaiting();
+    }
 
     #region General
 
@@ -74,7 +95,7 @@ public class GameManager : NetworkBehaviour
     #region (Pre-) Round Management
 
     /// <summary>
-    /// Relevant for both PreRound and Round.
+    ///     Relevant for both PreRound and Round.
     /// </summary>
     private Player _currentTurnPlayer;
 
@@ -87,12 +108,12 @@ public class GameManager : NetworkBehaviour
     private Player _roundStartingPlayer;
 
     /// <summary>
-    /// The player making the strongest choice in the pre-round, thereby deciding the round mode 
+    ///     The player making the strongest choice in the pre-round, thereby deciding the round mode
     /// </summary>
     private Player CurrentPreRoundWinner { get; set; }
 
     /// <summary>
-    /// round groups share their points and "play together"
+    ///     round groups share their points and "play together"
     /// </summary>
     private List<List<Player>> _roundGroups = new List<List<Player>>();
 
@@ -104,9 +125,9 @@ public class GameManager : NetworkBehaviour
     [SerializeField] private ScoreboardDisplay scoreboardDisplay;
 
     /// <summary>
-    /// The Suit determined in the pre-round.
-    /// For FarbSolo and FarbWenz, this is the Trump Suit chosen by the player.
-    /// For Sauspiel, this is the chosen Suit that determines the teams.
+    ///     The Suit determined in the pre-round.
+    ///     For FarbSolo and FarbWenz, this is the Trump Suit chosen by the player.
+    ///     For Sauspiel, this is the chosen Suit that determines the teams.
     /// </summary>
     private PlayingCard.Suit CurrentRoundSuit { get; set; }
 
@@ -114,12 +135,12 @@ public class GameManager : NetworkBehaviour
     [SerializeField] private Image[] playedCardSlots = new Image[4];
 
     private readonly SyncListPlayingCard _currentStich = new SyncListPlayingCard();
-    
+
     [SyncVar(hook = nameof(OnStichWinnerChanged))]
     private PlayingCard.PlayingCardInfo _currentStichWinner;
 
     /// <summary>
-    /// Holds the 8 stiches of a round. Is cleared before the start of every round.
+    ///     Holds the 8 stiches of a round. Is cleared before the start of every round.
     /// </summary>
     private readonly Dictionary<PlayingCard.Stich, Player> _completedStiches =
         new Dictionary<PlayingCard.Stich, Player>();
@@ -130,35 +151,11 @@ public class GameManager : NetworkBehaviour
 
     #endregion
 
-
-    ///////////////////////////////////////////////
-    /////////////////// Methods ///////////////////
-    ///////////////////////////////////////////////
-
-    // Start is called before the first frame update
-    private void Awake()
-    {
-        Singleton = this;
-        _cardDeck = PlayingCard.InitializeCardDeck();
-        _currentStich.Callback = OnStichCardsChanged;
-        _audioSource = GetComponent<AudioSource>();
-    }
-
-    public override void OnStartServer()
-    {
-        foreach (PlayingCard.PlayingCardInfo cardInfo in _cardDeck)
-        {
-            _syncListCardDeck.Add(cardInfo);
-        }
-
-        EnterStateWaiting();
-    }
-
     #region Game State Transitions
 
     /// <summary>
-    /// Used to enter the "WaitingForPlayers" state:
-    /// * we are simply waiting until we have enough players
+    ///     Used to enter the "WaitingForPlayers" state:
+    ///     * we are simply waiting until we have enough players
     /// </summary>
     private void EnterStateWaiting()
     {
@@ -166,18 +163,16 @@ public class GameManager : NetworkBehaviour
     }
 
     /// <summary>
-    /// Used to enter the "Game Running" state
-    /// * players can enter custom names
-    /// * host can start a new round
+    ///     Used to enter the "Game Running" state
+    ///     * players can enter custom names
+    ///     * host can start a new round
     /// </summary>
     private void EnterStateGameRunning()
     {
         // check previous game state
         if (CurrentGameState == GameState.Waiting)
-        {
             // set starting player to the last one so that before the first round the player 0 gets selected
             _roundStartingPlayer = _players[3];
-        }
 
         // update the game state
         CurrentGameState = GameState.GameRunning;
@@ -188,10 +183,10 @@ public class GameManager : NetworkBehaviour
     }
 
     /// <summary>
-    /// Used to enter the "Pre Round" state
-    /// * Cards are dealt to the players
-    /// * All the players are asked whether they want to "play" or "pass" (startingPlayer is asked first)
-    /// * (if everybody passes, a Ramsch has to be initialized)
+    ///     Used to enter the "Pre Round" state
+    ///     * Cards are dealt to the players
+    ///     * All the players are asked whether they want to "play" or "pass" (startingPlayer is asked first)
+    ///     * (if everybody passes, a Ramsch has to be initialized)
     /// </summary>
     private void EnterStatePreRound()
     {
@@ -217,7 +212,7 @@ public class GameManager : NetworkBehaviour
     }
 
     /// <summary>
-    /// Used to enter the "Round" state
+    ///     Used to enter the "Round" state
     /// </summary>
     private void EnterStateRound()
     {
@@ -235,10 +230,10 @@ public class GameManager : NetworkBehaviour
     }
 
     /// <summary>
-    /// Used to enter the "Round Finished" state
-    /// * count scores
-    /// * show scoreboard
-    /// * host can start next round
+    ///     Used to enter the "Round Finished" state
+    ///     * count scores
+    ///     * show scoreboard
+    ///     * host can start next round
     /// </summary>
     private void EnterStateRoundFinished()
     {
@@ -267,15 +262,13 @@ public class GameManager : NetworkBehaviour
 
         foreach (var player in _players)
         {
-            int playerRoundScore = _completedStiches
+            var playerRoundScore = _completedStiches
                 .Where(pair => pair.Value.Equals(player))
                 .Sum(pair => pair.Key.Worth);
 
             // add the player's round score to each member of their group, including themselves
             foreach (var groupPlayer in _roundGroups.Find(group => group.Contains(player)))
-            {
                 roundScore.AddEntry(groupPlayer.playerName, playerRoundScore);
-            }
         }
 
         _scoreBoard.Add(roundScore);
@@ -305,12 +298,12 @@ public class GameManager : NetworkBehaviour
         }
 
         // the round starting player is the first to choose, so if he is next, then all players have chosen
-        bool allPlayersHaveChosen = _roundStartingPlayer.Equals(_players.CycleNext(_currentTurnPlayer));
+        var allPlayersHaveChosen = _roundStartingPlayer.Equals(_players.CycleNext(_currentTurnPlayer));
 
         // it is not necessary that all players choose if this player chose Wenz
-        bool preRoundFinished = (playerChoiceRoundMode == RoundMode.Wenz
-                                 || playerChoiceRoundMode == RoundMode.FarbWenz
-                                 || allPlayersHaveChosen);
+        var preRoundFinished = playerChoiceRoundMode == RoundMode.Wenz
+                               || playerChoiceRoundMode == RoundMode.FarbWenz
+                               || allPlayersHaveChosen;
 
         if (preRoundFinished)
         {
@@ -326,17 +319,19 @@ public class GameManager : NetworkBehaviour
     }
 
     /// <summary>
-    /// Calculates the list of trump cards for this round, sorted by increasing precedence.
-    /// The trump list depends on the current round mode, and the current round suit, both chosen during the pre-round.
+    ///     Calculates the list of trump cards for this round, sorted by increasing precedence.
+    ///     The trump list depends on the current round mode, and the current round suit, both chosen during the pre-round.
     /// </summary>
     /// <param name="roundMode">The current round mode</param>
-    /// <param name="roundSuit">The current round suit,
-    ///     i.e. extra trump suit for FarbWenz/FarbSolo, or the "sought" Ace-Suit for Sauspiel</param>
+    /// <param name="roundSuit">
+    ///     The current round suit,
+    ///     i.e. extra trump suit for FarbWenz/FarbSolo, or the "sought" Ace-Suit for Sauspiel
+    /// </param>
     /// <returns>The list of cards that are currently trumps, sorted by increasing precedence</returns>
-    /// <seealso cref="CurrentRoundSuit"/>
+    /// <seealso cref="CurrentRoundSuit" />
     public static List<PlayingCard.PlayingCardInfo> GetTrumpList(RoundMode roundMode, PlayingCard.Suit roundSuit)
     {
-        List<PlayingCard.PlayingCardInfo> trumps = new List<PlayingCard.PlayingCardInfo>();
+        var trumps = new List<PlayingCard.PlayingCardInfo>();
 
         // The "Unter"s are always trump
         trumps.AddRange(
@@ -349,17 +344,23 @@ public class GameManager : NetworkBehaviour
 
         // For all other modes, add the additional Trump Suit BELOW the other trumps
         // (the user specified suit in case of FarbSolo/FarbWenz, or Herz in case of Sauspiel/Ramsch)
-        PlayingCard.Suit additionalTrumpSuit = 
-            (roundMode == RoundMode.FarbSolo || roundMode == RoundMode.FarbWenz) ? roundSuit : PlayingCard.Suit.Herz;
+        var additionalTrumpSuit = roundMode == RoundMode.FarbSolo || roundMode == RoundMode.FarbWenz
+            ? roundSuit
+            : PlayingCard.Suit.Herz;
+
+        // we insert every card except the "Unter"s (and except the "Ober"s if we are not in Wenz)
+
         trumps.InsertRange(0,
             from PlayingCard.Rank rank in Enum.GetValues(typeof(PlayingCard.Rank))
-            where rank < PlayingCard.Rank.Unter
+            where rank != PlayingCard.Rank.Unter // Exclude "Unter"s
+            where rank != PlayingCard.Rank.Ober ||
+                  roundMode == RoundMode.FarbWenz // Exclude "Ober"s if we are in Sauspiel/Solo/Ramsch
             select new PlayingCard.PlayingCardInfo(additionalTrumpSuit, rank)
         );
 
         // For FarbWenz, we are done here
         if (roundMode == RoundMode.FarbWenz) return trumps;
-        
+
         // For FarbSolo, Sauspiel, Ramsch add the "Ober"s at the top
         trumps.AddRange(
             from PlayingCard.Suit suit in Enum.GetValues(typeof(PlayingCard.Suit))
@@ -370,35 +371,37 @@ public class GameManager : NetworkBehaviour
     }
 
     /// <summary>
-    /// Calculates the Teams/Groups for the current Round, i.e. the players whose scores will be shared.
+    ///     Calculates the Teams/Groups for the current Round, i.e. the players whose scores will be shared.
     /// </summary>
     /// <param name="players">The list of players</param>
-    /// <param name="roundModeDecider">The player that "won" the pre round decision, i.e. the player that decided the round mode</param>
+    /// <param name="roundModeDecider">
+    ///     The player that "won" the pre round decision, i.e. the player that decided the round
+    ///     mode
+    /// </param>
     /// <param name="roundMode">The current round mode</param>
-    /// <param name="roundSuit">The current round suit,
-    ///     i.e. extra trump suit for FarbWenz/FarbSolo, or the "sought" Ace-Suit for Sauspiel</param>
+    /// <param name="roundSuit">
+    ///     The current round suit,
+    ///     i.e. extra trump suit for FarbWenz/FarbSolo, or the "sought" Ace-Suit for Sauspiel
+    /// </param>
     /// <returns>A List of Groups of Players</returns>
     /// <exception cref="ArgumentOutOfRangeException"></exception>
     public static List<List<Player>> CalculateRoundGroups(List<Player> players, Player roundModeDecider,
         RoundMode roundMode, PlayingCard.Suit roundSuit)
     {
-        List<List<Player>> roundGroups = new List<List<Player>>();
+        var roundGroups = new List<List<Player>>();
 
         // it all depends on the current round mode
         switch (roundMode)
         {
             case RoundMode.Ramsch:
                 // everyone plays on their own, so each player is in a separate group
-                foreach (var player in players)
-                {
-                    roundGroups.Add(new List<Player> {player});
-                }
+                foreach (var player in players) roundGroups.Add(new List<Player> {player});
 
                 break;
 
             case RoundMode.Sauspiel:
                 // find the player that has the respective Sau
-                Player sauOwner = players.Find(player => player.handCards.Contains(
+                var sauOwner = players.Find(player => player.handCards.Contains(
                     new PlayingCard.PlayingCardInfo(roundSuit, PlayingCard.Rank.Ass)
                 ));
 
@@ -433,7 +436,7 @@ public class GameManager : NetworkBehaviour
         // add the card to the played cards
         _currentStich.Add(cardInfo);
 
-        bool stichComplete = _currentStich.Count == 4;
+        var stichComplete = _currentStich.Count == 4;
 
         if (stichComplete)
         {
@@ -451,14 +454,14 @@ public class GameManager : NetworkBehaviour
     [Server]
     private void OnStichCompleted()
     {
-        PlayingCard.Stich currentStichStruct = new PlayingCard.Stich();
+        var currentStichStruct = new PlayingCard.Stich();
         currentStichStruct.AddAll(_currentStich.ToArray());
 
         // determine who won the stich
         _currentStichWinner = currentStichStruct.CalculateWinningCard(CurrentRoundMode, CurrentRoundSuit);
         Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
                   $"Server {netId} setting Stich Winner = {_currentStichWinner}");
-        Player winningPlayer = _players.Cycle(_currentTurnPlayer, _currentStich.IndexOf(_currentStichWinner) + 1);
+        var winningPlayer = _players.Cycle(_currentTurnPlayer, _currentStich.IndexOf(_currentStichWinner) + 1);
 
         // let the players know
         _gameStateText = $"{winningPlayer.playerName} gewinnt mit {_currentStichWinner}...";
@@ -485,15 +488,11 @@ public class GameManager : NetworkBehaviour
         // clear the stiches table and the current stich
         _currentStich.Clear();
 
-        bool roundFinished = _completedStiches.Count == 8;
+        var roundFinished = _completedStiches.Count == 8;
         if (roundFinished)
-        {
             EnterStateRoundFinished();
-        }
         else
-        {
             StartStich();
-        }
     }
 
     [Server]
@@ -513,31 +512,25 @@ public class GameManager : NetworkBehaviour
 
         _gameStateText = $"Warte auf {4 - _players.Count} Spieler... ";
 
-        if (_players.Count == 4)
-        {
-            EnterStateGameRunning();
-        }
+        if (_players.Count == 4) EnterStateGameRunning();
     }
 
     /// <summary>
-    /// Gives out the cards from the deck:
-    /// card 00-07 to player 1, card 08-15 to player 2, card 16-23 to player 3, card 24-31 to player 4
+    ///     Gives out the cards from the deck:
+    ///     card 00-07 to player 1, card 08-15 to player 2, card 16-23 to player 3, card 24-31 to player 4
     /// </summary>
     [Server]
     private void DealCards()
     {
         _syncListCardDeck.Shuffle();
 
-        int dealtCards = 0;
-        foreach (Player player in _players)
+        var dealtCards = 0;
+        foreach (var player in _players)
         {
             Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
                       $"Player {player.netId} should get cards {dealtCards} to {dealtCards + 7}");
             // this updates a SyncList on the player server object, which then notifies his respective client object
-            for (int i = dealtCards; i < dealtCards + 8; i++)
-            {
-                player.handCards.Add(_syncListCardDeck[i]);
-            }
+            for (var i = dealtCards; i < dealtCards + 8; i++) player.handCards.Add(_syncListCardDeck[i]);
 
             dealtCards += 8;
         }
@@ -572,7 +565,7 @@ public class GameManager : NetworkBehaviour
                 {
                     cardSlot.gameObject.SetActive(false);
                     cardSlot.sprite = PlayingCard.DefaultCardSprite;
-                    
+
                     // reset size back to normal to undo the "Highlighting" of the winner
                     cardSlot.rectTransform.localScale = Vector3.one;
                 }
@@ -589,17 +582,17 @@ public class GameManager : NetworkBehaviour
                   $"Client {netId} was notified of Stich winner '{newStichWinner}'");
         Assert.IsTrue(_currentStich.Count == 4);
 
-        int i = _currentStich.IndexOf(newStichWinner);
-        
+        var i = _currentStich.IndexOf(newStichWinner);
+
         // we expect the stich winner to be one of the played cards!
         Assert.AreNotEqual(-1, i);
 
         // slightly enlarge the card
-        StartCoroutine(HighlightStichCard(i, secondsPauseAfterStich * 1f/3));
+        StartCoroutine(HighlightStichCard(i, secondsPauseAfterStich * 1f / 3));
     }
 
     /// <summary>
-    /// Highlights the card at the given index after a given time delaySecs in seconds
+    ///     Highlights the card at the given index after a given time delaySecs in seconds
     /// </summary>
     /// <param name="index"></param>
     /// <param name="delaySecs"></param>
@@ -608,8 +601,8 @@ public class GameManager : NetworkBehaviour
     {
         yield return new WaitForSeconds(delaySecs);
 
-        Image winnerImage = playedCardSlots[index];
-        
+        var winnerImage = playedCardSlots[index];
+
         // slightly enlarge the card
         winnerImage.rectTransform.localScale = Vector3.one * 1.2f;
     }

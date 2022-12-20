@@ -10,32 +10,26 @@ namespace Tests
 {
     public class GameLogicTests
     {
-        private readonly List<Player> _players = new List<Player>();
         private readonly List<PlayingCardInfo> _cardDeck = InitializeCardDeck();
+        private readonly List<Player> _players = new List<Player>();
 
         /// <summary>
-        /// Creates 4 players with random cards
+        ///     Creates 4 players with random cards
         /// </summary>
         [SetUp]
         public void Setup()
         {
-            for (int i = 0; i < 4; i++)
-            {
-                _players.Add(new GameObject($"Player_{i}").AddComponent<Player>());
-            }
+            for (var i = 0; i < 4; i++) _players.Add(new GameObject($"Player_{i}").AddComponent<Player>());
 
             _cardDeck.Shuffle();
 
-            int dealtCards = 0;
+            var dealtCards = 0;
             foreach (var player in _players)
             {
                 // I am not sure why this is necessary, but it works...
                 player.handCards.InitializeBehaviour(player, player.GetHashCode());
-                
-                for (int i = dealtCards; i < dealtCards + 8; i++)
-                {
-                    player.handCards.Add(_cardDeck[i]);
-                }
+
+                for (var i = dealtCards; i < dealtCards + 8; i++) player.handCards.Add(_cardDeck[i]);
 
                 dealtCards += 8;
             }
@@ -51,18 +45,18 @@ namespace Tests
         public void CalculateRoundGroupsSau()
         {
             // find the player who has the schelln sau
-            Player schellnSauOwner =
+            var schellnSauOwner =
                 _players.Find(p => p.handCards.Contains(new PlayingCardInfo(Suit.Schelln, Rank.Ass)));
 
             // select one of the other three players to be the sau player
             var otherPlayers = _players.Except(new[] {schellnSauOwner}).ToList();
             otherPlayers.Shuffle();
-            Player schellnSauSeeker = otherPlayers[0];
+            var schellnSauSeeker = otherPlayers[0];
             otherPlayers.Remove(schellnSauSeeker);
-            
+
             Assert.AreEqual(2, otherPlayers.Count);
-            
-            List<List<Player>> actualRoundGroups =
+
+            var actualRoundGroups =
                 CalculateRoundGroups(_players, schellnSauSeeker, RoundMode.Sauspiel, Suit.Schelln);
 
             var expectedRoundGroups = new List<List<Player>>
@@ -81,23 +75,23 @@ namespace Tests
             foreach (var expectedGroup in expectedGroups.ToList())
             {
                 // find the expected Group matching the actual group and remove it
-                List<Player> matchingExpectedGroup =
+                var matchingExpectedGroup =
                     expectedGroups.Find(g => g.SequenceEqual(expectedGroup));
 
                 Assert.NotNull(matchingExpectedGroup);
                 Assert.True(expectedGroups.Remove(matchingExpectedGroup));
             }
-            
+
             // we should have removed every element from the expected groups
             Assert.AreEqual(0, expectedGroups.Count);
         }
-        
+
         [Test]
         public void ScoreBoardRow_AddSingleEntry()
         {
-            Extensions.ScoreBoardRow row = new Extensions.ScoreBoardRow();
+            var row = new Extensions.ScoreBoardRow();
             Assert.AreEqual(0, row.EntryCount);
-            
+
             row.AddEntry("Luis", 42);
 
             Assert.AreEqual(1, row.EntryCount);
@@ -106,9 +100,9 @@ namespace Tests
         [Test]
         public void ScoreBoardRow_Add4Entries()
         {
-            Extensions.ScoreBoardRow row = new Extensions.ScoreBoardRow();
+            var row = new Extensions.ScoreBoardRow();
             Assert.AreEqual(0, row.EntryCount);
-            
+
             row.AddEntry("Lukian", 42);
             Assert.AreEqual(1, row.EntryCount);
 
@@ -120,33 +114,32 @@ namespace Tests
 
             row.AddEntry("Meo", 99);
             Assert.AreEqual(4, row.EntryCount);
-
         }
-        
+
         [Test]
         public void ScoreBoardRow_AddTooMuchEntries()
         {
-            Extensions.ScoreBoardRow row = new Extensions.ScoreBoardRow();
+            var row = new Extensions.ScoreBoardRow();
             Assert.AreEqual(0, row.EntryCount);
-            
+
             row.AddEntry("Lukian", 51);
             row.AddEntry("Nuria", 26);
             row.AddEntry("Lena", 13);
             row.AddEntry("Meo", 99);
-            
+
             Assert.AreEqual(4, row.EntryCount);
 
             Assert.Catch<InvalidOperationException>(() => row.AddEntry("Luis", 42));
 
             Assert.AreEqual(4, row.EntryCount);
         }
-        
+
         [Test]
         public void ScoreBoardRow_AmendExistingEntry()
         {
-            Extensions.ScoreBoardRow row = new Extensions.ScoreBoardRow();
+            var row = new Extensions.ScoreBoardRow();
             Assert.AreEqual(0, row.EntryCount);
-            
+
             row.AddEntry("Luis", 15);
             Assert.AreEqual(1, row.EntryCount);
             Assert.AreEqual(15, row.entries[0].score);
