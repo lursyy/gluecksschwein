@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
 using TMPro;
@@ -45,7 +44,7 @@ public class GameManager : NetworkBehaviour
     [Header("General")]
     [SerializeField] private TextMeshProUGUI gameStateTextField;
     
-    public enum RoundMode
+    public enum RoundMode // TODO add specific Solo modes?
     {
         Ramsch,
         SauspielBlatt,
@@ -55,7 +54,6 @@ public class GameManager : NetworkBehaviour
         Wenz
     }
     
-    [SuppressMessage("ReSharper", "UnusedMember.Global")]
     public enum PreRoundChoice
     {
         Weiter,
@@ -332,7 +330,7 @@ public class GameManager : NetworkBehaviour
             case PreRoundChoice.Solo:
                 throw new NotImplementedException("TODO trump choices still missing in solo");
             case PreRoundChoice.Wenz:
-                throw new NotImplementedException("TODO trump choices still missing in Wenz");
+                throw new NotImplementedException("TODO Do we need trump choice in Wenz?");
             default:
                 throw new ArgumentOutOfRangeException(nameof(playerChoice), playerChoice, null);
         }
@@ -396,18 +394,13 @@ public class GameManager : NetworkBehaviour
 
     private static PlayingCard.Suit GetSauSuit(RoundMode roundMode)
     {
-        switch (roundMode)
+        if (roundMode > RoundMode.SauspielSchelln)
         {
-            case RoundMode.SauspielBlatt:
-                return PlayingCard.Suit.Blatt;
-            case RoundMode.SauspielEichel:
-                return PlayingCard.Suit.Eichel;
-            case RoundMode.SauspielSchelln:
-                return PlayingCard.Suit.Schelln;
-            default:
-                throw new ArgumentOutOfRangeException(nameof(roundMode), roundMode,
-                    $"trying to get Sau Suit for non sau roundMode {roundMode}");
+            throw new ArgumentOutOfRangeException(nameof(roundMode), roundMode,
+                $"trying to get Sau Suit for non sau roundMode {roundMode}");
         }
+
+        return (PlayingCard.Suit) roundMode;
     }
 
     [Command]

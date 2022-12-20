@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using UnityEngine;
 
 public static class PlayingCard
@@ -42,7 +41,6 @@ public static class PlayingCard
         }
     }
 
-    [SuppressMessage("ReSharper", "UnusedMember.Global")]
     public enum Suit
     {
         Blatt,
@@ -51,16 +49,25 @@ public static class PlayingCard
         Herz
     }
 
+    /**
+     * We order the ranks by their default precedence
+     * (i.e. when no trumps are involved), so we can use
+     * the enum order directly when comparing cards.
+     *
+     * This ordering will also be helpful if we decide to use
+     * our saulib library for determining the stich winner later.
+     * TODO test if this enum ordering produces problems
+     */
     public enum Rank
     {
-        Sieben,
+        Sieben = 7,
         Acht,
         Neun,
-        Zehn,
         Koenig,
+        Zehn,
+        Ass,
         Unter,
-        Ober,
-        Ass
+        Ober
     }
     #endregion
 
@@ -72,7 +79,6 @@ public static class PlayingCard
         public int CardCount { get; private set; }
 
         public bool IsComplete => CardCount == 4;
-        // TODO maybe add the winning player id here? And / Or the points the stich is worth?
 
         public void AddCard(PlayingCardInfo card)
         {
