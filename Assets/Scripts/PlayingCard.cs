@@ -52,23 +52,41 @@ public static class PlayingCard
         switch (rank)
         {
             case Rank.Sieben:
+            {
                 return "07";
+            }
             case Rank.Acht:
+            {
                 return "08";
+            }
             case Rank.Neun:
+            {
                 return "09";
+            }
             case Rank.Koenig:
+            {
                 return "ko";
+            }
             case Rank.Zehn:
+            {
                 return "10";
+            }
             case Rank.Unter:
+            {
                 return "un";
+            }
             case Rank.Ober:
+            {
                 return "ob";
+            }
             case Rank.Ass:
+            {
                 return "as";
+            }
             default:
+            {
                 throw new ArgumentOutOfRangeException(nameof(rank), rank, null);
+            }
         }
     }
 
