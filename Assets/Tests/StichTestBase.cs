@@ -4,26 +4,36 @@ using NUnit.Framework;
 
 namespace Tests
 {
+    /// <summary>
+    /// This class provides methods to easily test Stich Winner results.
+    /// Simply extend this class, providing a constructor with the desired round mode and -suit.
+    /// </summary>
     public class StichTestBase
     {
-        private readonly GameManager.RoundMode _roundMode;
-        private readonly PlayingCard.Suit _roundSuit;
+        protected readonly GameManager.RoundMode roundMode;
+        protected PlayingCard.Suit roundSuit;
 
-        protected StichTestBase(GameManager.RoundMode roundMode, PlayingCard.Suit roundSuit)
+        protected StichTestBase(GameManager.RoundMode roundMode, PlayingCard.Suit roundSuit = PlayingCard.Suit.Herz)
         {
-            _roundMode = roundMode;
-            _roundSuit = roundSuit;
+            this.roundMode = roundMode;
+            this.roundSuit = roundSuit;
         }
         
-        protected void TestStichScenario(string[] stichCards, string[] expectedWinners)
+        /// <summary>
+        /// Compares the stich winner (and intermediate winners) against the given list of expected winners.
+        /// </summary>
+        /// <param name="cards">the 4 cards of the Stich</param>
+        /// <param name="winners">the 3 expected intermediate winners
+        ///  (i.e. card1 vs card2, card2 vs card3, card3 vs card4)</param>
+        protected void TestStichScenario(string[] cards, string[] winners)
         {
-            Assert.AreEqual(4, stichCards.Length);
-            Assert.AreEqual(3, expectedWinners.Length);
+            Assert.AreEqual(4, cards.Length);
+            Assert.AreEqual(3, winners.Length);
             
             var stichList = 
-                stichCards.Select(s => new PlayingCard.PlayingCardInfo(s.ToCharArray()));
+                cards.Select(s => new PlayingCard.PlayingCardInfo(s.ToCharArray()));
             var winnerList = 
-                expectedWinners.Select(s => new PlayingCard.PlayingCardInfo(s.ToCharArray()));
+                winners.Select(s => new PlayingCard.PlayingCardInfo(s.ToCharArray()));
             
             TestStichScenario(stichList, winnerList);
         }
@@ -41,7 +51,7 @@ namespace Tests
 
             while (expectedWinners.CardCount > 0)
             {
-                PlayingCard.PlayingCardInfo winner = stich.CalculateWinningCard(_roundMode, _roundSuit);
+                PlayingCard.PlayingCardInfo winner = stich.CalculateWinningCard(roundMode, roundSuit);
                 Assert.AreEqual(expectedWinners.Top, winner);
                 expectedWinners.RemoveTop();
                 stich.RemoveTop();
