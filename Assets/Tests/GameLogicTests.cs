@@ -25,7 +25,7 @@ namespace Tests
             var dealtCards = 0;
             foreach (var player in _players)
             {
-                for (var i = dealtCards; i < dealtCards + 8; i++) player.handCards.Add(_cardDeck[i]);
+                for (var i = dealtCards; i < dealtCards + 8; i++) player.HandCards.Add(_cardDeck[i]);
 
                 dealtCards += 8;
             }
@@ -42,7 +42,7 @@ namespace Tests
         {
             // find the player who has the schelln sau
             var schellnSauOwner =
-                _players.Find(p => p.handCards.Contains(new PlayingCardInfo(Suit.Schelln, Rank.Ass)));
+                _players.Find(p => p.HandCards.Contains(new PlayingCardInfo(Suit.Schelln, Rank.Ass)));
 
             // select one of the other three players to be the sau player
             var otherPlayers = _players.Except(new[] {schellnSauOwner}).ToList();

@@ -249,7 +249,6 @@ public static class PlayingCard
     /// <summary>
     ///     Make sure to only call this method ONCE, because it loads all the sprites
     /// </summary>
-    /// <returns></returns>
     public static List<PlayingCardInfo> InitializeCardDeck()
     {
         var deck = new List<PlayingCardInfo>();

@@ -9,6 +9,7 @@
     "com.unity.ide.rider": "2.0.7",
     "com.unity.ide.visualstudio": "2.0.11",
     "com.unity.ide.vscode": "1.2.4",
+    "com.unity.netcode.adapter.utp": "1.0.0-pre.3",
     "com.unity.netcode.gameobjects": "1.0.0-pre.3",
     "com.unity.services.lobby": "1.0.0-pre.6",
     "com.unity.services.relay": "1.0.1-pre.3",

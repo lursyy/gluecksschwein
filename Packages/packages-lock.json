@@ -129,6 +129,16 @@
       "dependencies": {},
       "url": "https://packages.unity.com"
     },
+    "com.unity.netcode.adapter.utp": {
+      "version": "1.0.0-pre.3",
+      "depth": 0,
+      "source": "registry",
+      "dependencies": {
+        "com.unity.netcode.gameobjects": "1.0.0-pre.3",
+        "com.unity.transport": "1.0.0-pre.7"
+      },
+      "url": "https://packages.unity.com"
+    },
     "com.unity.netcode.gameobjects": {
       "version": "1.0.0-pre.3",
       "depth": 0,
@@ -242,7 +252,7 @@
       "url": "https://packages.unity.com"
     },
     "com.unity.transport": {
-      "version": "1.0.0-pre.6",
+      "version": "1.0.0-pre.7",
       "depth": 1,
       "source": "registry",
       "dependencies": {

@@ -1,9 +1,14 @@
+using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using TMPro;
 using Unity.Netcode;
+using Unity.Services.Authentication;
+using Unity.Services.Core;
 using UnityEngine;
 using UnityEngine.Networking.Match;
 using UnityEngine.UI;
+using Random = UnityEngine.Random;
 
 [RequireComponent(typeof(NetworkManager))]
 // ReSharper disable once InconsistentNaming
@@ -12,6 +17,7 @@ public class CustomNetworkHUD : MonoBehaviour
     [SerializeField] private GameObject lobbyPanel;
 
     [SerializeField] private Button hostGameButton;
+    [SerializeField] private Button joinGameButton;
     [SerializeField] private TMP_InputField hostGameInputField; // for the match name
 
     [SerializeField] private GameObject joinGamePanel;
@@ -23,41 +29,58 @@ public class CustomNetworkHUD : MonoBehaviour
     private float _nextRefreshTime;
     private bool _uiActive = true;
 
-    private void Awake()
+    private async void Awake()
     {
         lobbyPanel.SetActive(true);
 
         _manager = GetComponent<NetworkManager>();
-        _manager.StartMatchMaker();
 
-        // randomize the default match name
-        hostGameInputField.text = $"Spiel {Random.Range(1, 100)}";
+        try
+        {
+            var playerId = await RelayManager.SetupRelay();
+            Debug.Log($"Player auth done: {playerId}");
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+        }
 
+        // _manager.StartMatchMaker();
+        
         // empty match name is not allowed
-        hostGameInputField.onValueChanged.AddListener(val => hostGameButton.interactable = val != "");
+        hostGameInputField.onValueChanged.AddListener(val => joinGameButton.interactable = val != "");
     }
 
     private void OnGUI()
     {
-        if (Time.time >= _nextRefreshTime) RefreshMatches();
+        // TODO remove?
+        // if (Time.time >= _nextRefreshTime) RefreshMatches();
     }
 
     /// <summary>
     ///     Host a new game with a given name
     /// </summary>
-    public void CreateMatch()
+    public async void CreateMatch()
     {
-        var matchName = hostGameInputField.text;
-        _manager.matchMaker.CreateMatch(matchName, _manager.matchSize, true, "", "", "", 0, 0,
-            OnMatchCreate);
+        // var matchName = hostGameInputField.text;
+        var (ipv4Address, port, allocationIdBytes, connectionData, key, joinCode) =
+            await RelayManager.AllocateRelayServerAndGetJoinCode(4);
+        GameManager.Singleton.SetJoinCode(joinCode);
+        NetworkManager.Singleton.GetComponent<UnityTransport>()
+            .SetRelayServerData(ipv4Address, port, allocationIdBytes, key, connectionData);
+        NetworkManager.Singleton.StartHost();
+        Debug.Log($"host started match '{joinCode}'");
+        DisableUi();
+        // _manager.matchMaker.CreateMatch(matchName, _manager.matchSize, true, "", "", "", 0, 0, OnMatchCreate);
     }
 
     private void OnMatchCreate(bool success, string extendedInfo, MatchInfo responseData)
     {
-        DisableUi();
+        // DisableUi();
 
         // forward the callback to the network manager
-        _manager.OnMatchCreate(success, extendedInfo, responseData);
+        // TODO
+        // _manager.OnMatchCreate(success, extendedInfo, responseData);
     }
 
     private void DisableUi()
@@ -66,53 +89,66 @@ public class CustomNetworkHUD : MonoBehaviour
         lobbyPanel.SetActive(false);
     }
 
-    private void JoinMatch(MatchInfoSnapshot matchInfo)
+    public async void JoinMatch()
     {
-        if (_manager.matchMaker == null) _manager.StartMatchMaker();
+        var joinCode = hostGameInputField.text;
+        
+        var (ipv4Address, port, allocationIdBytes, connectionData, hostConnectionData, key) =
+            await RelayManager.JoinRelayServerFromJoinCode(joinCode);
 
-        _manager.matchMaker.JoinMatch(matchInfo.networkId, "", "", "", 0, 0, OnMatchJoined);
+        // When connecting as a client to a Relay server, connectionData and hostConnectionData are different.
+        NetworkManager.Singleton.GetComponent<UnityTransport>().SetRelayServerData(ipv4Address, port, allocationIdBytes,
+            key, connectionData, hostConnectionData);
+
+        NetworkManager.Singleton.StartClient();
+        Debug.Log($"client joined match '{joinCode}'");
+        DisableUi();
     }
 
     private void OnMatchJoined(bool success, string extendedInfo, MatchInfo responseData)
     {
-        DisableUi();
+        // DisableUi();
         // forward the callback to the network manager
-        _manager.OnMatchJoined(success, extendedInfo, responseData);
+        // TODO
+        // _manager.OnMatchJoined(success, extendedInfo, responseData);
     }
 
     private void RefreshMatches()
     {
         _nextRefreshTime += refreshIntervalSeconds;
 
-        if (_manager.matchMaker == null) _manager.StartMatchMaker();
+        // TODO
+        // if (_manager.matchMaker == null) _manager.StartMatchMaker();
 
         if (!_uiActive) return;
 
         Debug.Log("Refreshing Match List...");
-        _manager.matchMaker.ListMatches(0, 10, "", true, 0, 0, OnMatchList);
+        // TODO
+        // _manager.matchMaker.ListMatches(0, 10, "", true, 0, 0, OnMatchList);
     }
 
     private void OnMatchList(bool success, string extendedInfo, List<MatchInfoSnapshot> matchList)
     {
-        _manager.OnMatchList(success, extendedInfo, matchList);
+        // TODO
+        // _manager.OnMatchList(success, extendedInfo, matchList);
         UpdateJoinMatchButtons();
     }
 
     private void UpdateJoinMatchButtons()
     {
-        var hasMatches = _manager.matches != null && _manager.matches.Count > 0;
-        joinGamePanel.SetActive(hasMatches);
+        // var hasMatches = _manager.matches != null && _manager.matches.Count > 0;
+        // joinGamePanel.SetActive(hasMatches);
 
         // clear the old buttons
         foreach (Transform button in joinGameButtonList) Destroy(button.gameObject);
 
-        if (!hasMatches) return;
-        foreach (var matchInfo in _manager.matches)
-        {
-            var joinMatchButton = Instantiate(joinGameButtonPrefab, joinGameButtonList);
-            joinMatchButton.GetComponentInChildren<TextMeshProUGUI>().text =
-                $"{matchInfo.name} ({matchInfo.currentSize}P)";
-            joinMatchButton.onClick.AddListener(() => JoinMatch(matchInfo));
-        }
+        // if (!hasMatches) return;
+        // foreach (var matchInfo in _manager.matches)
+        // {
+        //     var joinMatchButton = Instantiate(joinGameButtonPrefab, joinGameButtonList);
+        //     joinMatchButton.GetComponentInChildren<TextMeshProUGUI>().text =
+        //         $"{matchInfo.name} ({matchInfo.currentSize}P)";
+        //     joinMatchButton.onClick.AddListener(() => JoinMatch(matchInfo));
+        // }
     }
 }

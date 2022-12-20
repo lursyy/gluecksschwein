@@ -14,15 +14,18 @@ public class Player : NetworkBehaviour
 
     private List<Button> _handButtons;
 
-    public readonly NetworkList<PlayingCard.PlayingCardInfo> handCards = new NetworkList<PlayingCard.PlayingCardInfo>();
+    public NetworkList<PlayingCard.PlayingCardInfo> HandCards { get; private set; }
 
     #region General
-
-
+    
     private void Awake()
     {
-        handCards.OnListChanged += OnSyncListHandCardsChanged;
+        HandCards = new NetworkList<PlayingCard.PlayingCardInfo>();
+        HandCards.OnListChanged += OnSyncListHandCardsChanged;
+    }
 
+    public override void OnNetworkSpawn()
+    {
         if (IsServer)
         {
             Debug.Log($"I am player {NetworkObjectId} on the server");
@@ -46,23 +49,23 @@ public class Player : NetworkBehaviour
                 ? $"Spieler {NetworkObjectId - 1}"
                 : _playerNameInput.text;
 
-            CmdSetUserName(playerName);
+            SetUserNameServerRpc(playerName);
             _playerNameInput.interactable = false;
         }
     }
 
     [ServerRpc]
-    private void CmdSetUserName(string newName)
+    private void SetUserNameServerRpc(string newName)
     {
         Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
                   $"Player {NetworkObjectId} was asked to change name");
         PlayerName = newName;
         name = newName;
-        RpcSetUserName(newName);
+        SetUserNameClientRpc(newName);
     }
 
     [ClientRpc]
-    private void RpcSetUserName(string newName)
+    private void SetUserNameClientRpc(string newName)
     {
         if (!IsLocalPlayer)
         {
@@ -81,7 +84,7 @@ public class Player : NetworkBehaviour
     #region PreRound
 
     [ClientRpc]
-    public void RpcDisplayPreRoundButtons(GameManager.RoundMode currentRoundMode)
+    public void DisplayPreRoundButtonsClientRpc(GameManager.RoundMode currentRoundMode)
     {
         // are we on the client that is controlling this player? otherwise, stop here
         if (!IsLocalPlayer) return;
@@ -132,7 +135,7 @@ public class Player : NetworkBehaviour
         // otherwise, convert the clicked item index into a choice
         var sauSuit = (PlayingCard.Suit)sauChoiceInt - 1;
 
-        CmdSelectPreRoundChoice(GameManager.RoundMode.Sauspiel, sauSuit);
+        SelectPreRoundChoiceServerRpc(GameManager.RoundMode.Sauspiel, sauSuit);
     }
 
     private void OnPreRoundChooseSolo(int soloChoiceInt)
@@ -149,7 +152,7 @@ public class Player : NetworkBehaviour
         // otherwise, directly convert the clicked item index
         var additionalTrumps = (PlayingCard.Suit)soloChoiceInt - 1;
 
-        CmdSelectPreRoundChoice(GameManager.RoundMode.FarbSolo, additionalTrumps);
+        SelectPreRoundChoiceServerRpc(GameManager.RoundMode.FarbSolo, additionalTrumps);
     }
 
     private void OnPreRoundChooseWenz(int wenzChoiceInt)
@@ -169,13 +172,13 @@ public class Player : NetworkBehaviour
             // Did the player choose a normal Wenz (i.e. without Suit)?
             case 5:
                 // the Suit does not matter here, but we have to pass one
-                CmdSelectPreRoundChoice(GameManager.RoundMode.Wenz, PlayingCard.Suit.Blatt);
+                SelectPreRoundChoiceServerRpc(GameManager.RoundMode.Wenz, PlayingCard.Suit.Blatt);
                 break;
             default:
             {
                 // otherwise, directly convert the clicked item index
                 var additionalTrumps = (PlayingCard.Suit)wenzChoiceInt - 1;
-                CmdSelectPreRoundChoice(GameManager.RoundMode.FarbWenz, additionalTrumps);
+                SelectPreRoundChoiceServerRpc(GameManager.RoundMode.FarbWenz, additionalTrumps);
                 break;
             }
         }
@@ -192,7 +195,7 @@ public class Player : NetworkBehaviour
          * This is a bit "dirty", but it lets us use the RoundMode enum directly.
          * (The suit does not matter here, but we can't pass null)
          */
-        CmdSelectPreRoundChoice(GameManager.RoundMode.Ramsch, PlayingCard.Suit.Herz);
+        SelectPreRoundChoiceServerRpc(GameManager.RoundMode.Ramsch, PlayingCard.Suit.Herz);
     }
 
     private void HidePreRoundButtons()
@@ -226,8 +229,8 @@ public class Player : NetworkBehaviour
             case NetworkListEvent<PlayingCard.PlayingCardInfo>.EventType.Add:
                 var i = changeEvent.Index;
                 Debug.Log($"OnSyncListHandCardsChanged: Player {NetworkObjectId} was notified of new card " +
-                          $"at position {i}: {handCards[i]}");
-                _handButtons[i].image.sprite = PlayingCard.SpriteDict[handCards[i]];
+                          $"at position {i}: {HandCards[i]}");
+                _handButtons[i].image.sprite = PlayingCard.SpriteDict[HandCards[i]];
                 _handButtons[i].gameObject.SetActive(true);
                 break;
             case NetworkListEvent<PlayingCard.PlayingCardInfo>.EventType.Clear:
@@ -256,12 +259,12 @@ public class Player : NetworkBehaviour
         _handButtons.ForEach(button => button.interactable = false);
 
         // tell the server to play the card
-        CmdPlayCard(handCards[index]);
+        PlayCardServerRpc(HandCards[index]);
     }
 
     [ServerRpc]
     // ReSharper disable once MemberCanBeMadeStatic.Local
-    private void CmdPlayCard(PlayingCard.PlayingCardInfo handCard)
+    private void PlayCardServerRpc(PlayingCard.PlayingCardInfo handCard)
     {
         Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
                   $"sending card {handCard} to the GameManager");
@@ -269,7 +272,7 @@ public class Player : NetworkBehaviour
     }
 
     [ServerRpc]
-    private void CmdSelectPreRoundChoice(GameManager.RoundMode roundMode, PlayingCard.Suit roundSuit)
+    private void SelectPreRoundChoiceServerRpc(GameManager.RoundMode roundMode, PlayingCard.Suit roundSuit)
     {
         Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
                   $"player {NetworkObjectId} sending roundMode {roundMode}, roundSuit {roundSuit} to the GameManager");
@@ -280,7 +283,7 @@ public class Player : NetworkBehaviour
     ///     enables the hand buttons for the local player. Disables the buttons for every other player
     /// </summary>
     [ClientRpc]
-    public void RpcStartTurn()
+    public void StartTurnClientRpc()
     {
         if (!IsLocalPlayer) return;
 
