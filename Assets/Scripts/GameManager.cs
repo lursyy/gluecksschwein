@@ -1,5 +1,7 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using System.Reflection;
 using UnityEngine;
 using UnityEngine.Networking;
@@ -9,7 +11,7 @@ public class GameManager : NetworkBehaviour
 {
     public static GameManager Singleton;
 
-    #region Game State Stuff
+    #region General
 
     public enum GameState
     {
@@ -19,7 +21,7 @@ public class GameManager : NetworkBehaviour
         Round,          // Active during a round (use in combination with CurrentRoundMode)
         RoundFinished   // We enter this state after the last "Stich". Here we can show/count scores
     }
-
+    
     [field: SyncVar] public GameState CurrentGameState { get; private set; }
     [field: SyncVar] public RoundMode CurrentRoundMode { get; private set; }
 
@@ -52,15 +54,30 @@ public class GameManager : NetworkBehaviour
         Wenz,
     }
 
-    #endregion
-
-    #region Player Management
-    
     [Header("Players")]
     public List<Player> players = new List<Player>();
     public List<Button> localPlayerCardButtons;
     public Button dealCardsButton;
-    private Player _roundStartingPlayer; 
+
+    #endregion
+
+    #region Card Deck
+
+    private List<PlayingCard.PlayingCardInfo> _cardDeck;
+    public class SyncListPlayingCard : SyncListStruct<PlayingCard.PlayingCardInfo> { }
+    private readonly SyncListPlayingCard _syncListCardDeck = new SyncListPlayingCard();
+
+    #endregion
+
+    #region (Pre-) Round Management
+
+    [SerializeField] private readonly Image[] _playedCardSlots = new Image[4];
+    private readonly SyncListPlayingCard _currentStich = new SyncListPlayingCard();
+    
+    /// <summary>
+    /// Relevant for both PreRound and Round.
+    /// </summary>
+    private Player _currentTurnPlayer;
     
     [Header("Pre-Round")]
     public GameObject preRoundButtonPanel; 
@@ -69,21 +86,12 @@ public class GameManager : NetworkBehaviour
     public Button preRoundWenzButton;
     public Button preRoundWeiterButton;
 
-    #endregion
-
-    #region Deck Management
-
-    private List<PlayingCard.PlayingCardInfo> _cardDeck;
-    public class SyncListPlayingCard : SyncListStruct<PlayingCard.PlayingCardInfo> { }
-    private readonly SyncListPlayingCard _syncListCardDeck = new SyncListPlayingCard();
-
-    #endregion
-
-    #region Round Management
+    private Player _roundStartingPlayer;
     
-    [SerializeField] private List<GameObject> playedCardSlots;
-    private readonly SyncListPlayingCard _playedCards = new SyncListPlayingCard();
-    private Player _currentPreRoundDecider;
+    /// <summary>
+    /// A Stich consists of 4 cards, and there are 8 Stichs in a Round
+    /// </summary>
+    private readonly PlayingCard.PlayingCardInfo[,] _completedStichs = new PlayingCard.PlayingCardInfo[8,4];
 
     #endregion
 
@@ -148,7 +156,7 @@ public class GameManager : NetworkBehaviour
         _roundStartingPlayer = players.CycleNext(_roundStartingPlayer);
         
         // the starting player decides first
-        _currentPreRoundDecider = _roundStartingPlayer;
+        _currentTurnPlayer = _roundStartingPlayer;
         
         // reset the Round Mode
         CurrentRoundMode = RoundMode.Ramsch;
@@ -157,7 +165,7 @@ public class GameManager : NetworkBehaviour
         CurrentPreRoundChoices.Clear();
         
         // Display the Pre Round Buttons for the currently deciding player
-        _currentPreRoundDecider.RpcDisplayPreRoundButtons(CurrentRoundMode);
+        _currentTurnPlayer.RpcDisplayPreRoundButtons(CurrentRoundMode);
     }
     
     /// <summary>
@@ -165,13 +173,19 @@ public class GameManager : NetworkBehaviour
     /// </summary>
     private void EnterStateRound()
     {
-        CurrentGameState = GameState.Round;
-        gameStateText = $"Runde läuft ({CurrentRoundMode})";
-        
         Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
                   $"entering round with {nameof(CurrentRoundMode)}={CurrentRoundMode}.");
         
+        CurrentGameState = GameState.Round;
+        // make sure it's the starting player's turn
+        _currentTurnPlayer = _roundStartingPlayer;
+
+        // clear the Stich table
+        Array.Clear(_completedStichs, 0, _completedStichs.Length);
         
+        // notify the player that it's their turn
+        _currentTurnPlayer.RpcStartTurn();
+        gameStateText = $"Runde läuft ({CurrentRoundMode})\n{_currentTurnPlayer.playerName} ist dran";
     }
     
     /// <summary>
@@ -211,8 +225,8 @@ public class GameManager : NetworkBehaviour
         else 
         {
             // otherwise display buttons to the next player
-            _currentPreRoundDecider = players.CycleNext(_currentPreRoundDecider);
-            _currentPreRoundDecider.RpcDisplayPreRoundButtons(CurrentRoundMode);
+            _currentTurnPlayer = players.CycleNext(_currentTurnPlayer);
+            _currentTurnPlayer.RpcDisplayPreRoundButtons(CurrentRoundMode);
         }
     }
     
@@ -223,7 +237,7 @@ public class GameManager : NetworkBehaviour
     {
         Singleton = this;
         _cardDeck = PlayingCard.InitializeCardDeck();
-        _playedCards.Callback = OnCardPlayed;
+        _currentStich.Callback = OnPlayedCardsChanged;
     }
 
     public override void OnStartServer()
@@ -239,13 +253,16 @@ public class GameManager : NetworkBehaviour
     #region Server Stuff / Commands
 
     [Command]
-    public void CmdPlayCard(PlayingCard.PlayingCardInfo cardInfo)
+    public void CmdHandlePlayCard(PlayingCard.PlayingCardInfo cardInfo)
     {
         Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
                   $"someone wants me (the server) to play {cardInfo}");
 
         // add the card to the played cards
-        _playedCards.Add(cardInfo);
+        _currentStich.Add(cardInfo);
+        
+        // append the card to the stich table
+        
     }
     
     [Server]
@@ -289,14 +306,28 @@ public class GameManager : NetworkBehaviour
 
     #region SyncVar Callbacks/Hooks
 
-    private void OnCardPlayed(SyncList<PlayingCard.PlayingCardInfo>.Operation op, int i)
+    private void OnPlayedCardsChanged(SyncList<PlayingCard.PlayingCardInfo>.Operation op, int i)
     {
-        Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
-                  $"the server notified me that {_playedCards[i]} was played");
+        switch (op)
+        {
+            case SyncList<PlayingCard.PlayingCardInfo>.Operation.OP_ADD:
+                Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
+                          $"the server notified me that {_currentStich[i]} was played");
 
-        // put the correct image in the position of the just played card
-        playedCardSlots[i].SetActive(true);
-        playedCardSlots[i].GetComponent<Image>().sprite = PlayingCard.SpriteDict[_playedCards[i]];
+                // put the correct image in the position of the just played card
+                _playedCardSlots[i].gameObject.SetActive(true);
+                _playedCardSlots[i].sprite = PlayingCard.SpriteDict[_currentStich[i]];
+                break;
+            case SyncList<PlayingCard.PlayingCardInfo>.Operation.OP_CLEAR:
+                foreach (var cardSlot in _playedCardSlots)
+                {
+                    cardSlot.gameObject.SetActive(false);
+                    cardSlot.sprite = PlayingCard.DefaultCardSprite;
+                }
+                break;
+            default:
+                throw new InvalidOperationException($"{nameof(op)}={op}");
+        }
     }
 
     private void OnGameStateTextChanged(string newText)

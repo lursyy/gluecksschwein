@@ -231,11 +231,6 @@ MonoBehaviour:
   preRoundSoloButton: {fileID: 1330755733}
   preRoundWenzButton: {fileID: 1623881132}
   preRoundWeiterButton: {fileID: 351045000}
-  playedCardSlots:
-  - {fileID: 822712271159058168}
-  - {fileID: 822712272340348403}
-  - {fileID: 822712271028345378}
-  - {fileID: 822712271245396842}
 --- !u!114 &97815955
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3065,6 +3060,16 @@ PrefabInstance:
       propertyPath: m_Name
       value: PlayingCard7
       objectReference: {fileID: 0}
+    - target: {fileID: 822712271965276836, guid: c925273d6f80bc948850aaa0a165c99f,
+        type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 822712271965276838, guid: c925273d6f80bc948850aaa0a165c99f,
+        type: 3}
+      propertyPath: m_Interactable
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 822712271965276839, guid: c925273d6f80bc948850aaa0a165c99f,
         type: 3}
       propertyPath: m_LocalPosition.x
@@ -3202,6 +3207,16 @@ PrefabInstance:
       propertyPath: m_Name
       value: PlayingCard1
       objectReference: {fileID: 0}
+    - target: {fileID: 822712271965276836, guid: c925273d6f80bc948850aaa0a165c99f,
+        type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 822712271965276838, guid: c925273d6f80bc948850aaa0a165c99f,
+        type: 3}
+      propertyPath: m_Interactable
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 822712271965276839, guid: c925273d6f80bc948850aaa0a165c99f,
         type: 3}
       propertyPath: m_LocalPosition.x
@@ -3338,6 +3353,16 @@ PrefabInstance:
         type: 3}
       propertyPath: m_Name
       value: PlayingCard4
+      objectReference: {fileID: 0}
+    - target: {fileID: 822712271965276836, guid: c925273d6f80bc948850aaa0a165c99f,
+        type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 822712271965276838, guid: c925273d6f80bc948850aaa0a165c99f,
+        type: 3}
+      propertyPath: m_Interactable
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 822712271965276839, guid: c925273d6f80bc948850aaa0a165c99f,
         type: 3}
@@ -3608,6 +3633,11 @@ PrefabInstance:
       propertyPath: m_Enabled
       value: 1
       objectReference: {fileID: 0}
+    - target: {fileID: 822712271965276838, guid: c925273d6f80bc948850aaa0a165c99f,
+        type: 3}
+      propertyPath: m_Interactable
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 822712271965276839, guid: c925273d6f80bc948850aaa0a165c99f,
         type: 3}
       propertyPath: m_LocalPosition.x
@@ -3750,6 +3780,16 @@ PrefabInstance:
       propertyPath: m_Name
       value: PlayingCard5
       objectReference: {fileID: 0}
+    - target: {fileID: 822712271965276836, guid: c925273d6f80bc948850aaa0a165c99f,
+        type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 822712271965276838, guid: c925273d6f80bc948850aaa0a165c99f,
+        type: 3}
+      propertyPath: m_Interactable
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 822712271965276839, guid: c925273d6f80bc948850aaa0a165c99f,
         type: 3}
       propertyPath: m_LocalPosition.x
@@ -3887,10 +3927,15 @@ PrefabInstance:
       propertyPath: m_Name
       value: PlayingCard3
       objectReference: {fileID: 0}
+    - target: {fileID: 822712271965276836, guid: c925273d6f80bc948850aaa0a165c99f,
+        type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 822712271965276838, guid: c925273d6f80bc948850aaa0a165c99f,
         type: 3}
       propertyPath: m_Interactable
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 822712271965276839, guid: c925273d6f80bc948850aaa0a165c99f,
         type: 3}
@@ -4029,6 +4074,16 @@ PrefabInstance:
       propertyPath: m_Name
       value: PlayingCard6
       objectReference: {fileID: 0}
+    - target: {fileID: 822712271965276836, guid: c925273d6f80bc948850aaa0a165c99f,
+        type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 822712271965276838, guid: c925273d6f80bc948850aaa0a165c99f,
+        type: 3}
+      propertyPath: m_Interactable
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 822712271965276839, guid: c925273d6f80bc948850aaa0a165c99f,
         type: 3}
       propertyPath: m_LocalPosition.x
@@ -4165,6 +4220,16 @@ PrefabInstance:
         type: 3}
       propertyPath: m_Name
       value: PlayingCard8
+      objectReference: {fileID: 0}
+    - target: {fileID: 822712271965276836, guid: c925273d6f80bc948850aaa0a165c99f,
+        type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 822712271965276838, guid: c925273d6f80bc948850aaa0a165c99f,
+        type: 3}
+      propertyPath: m_Interactable
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 822712271965276839, guid: c925273d6f80bc948850aaa0a165c99f,
         type: 3}

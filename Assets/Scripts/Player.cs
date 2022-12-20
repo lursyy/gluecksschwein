@@ -11,7 +11,7 @@ public class Player : NetworkBehaviour
     private List<Button> _handButtons;
     public string playerName;
 
-    #region Callbacks
+    #region General
     
     public override void OnStartServer()
     {
@@ -42,40 +42,7 @@ public class Player : NetworkBehaviour
     {
         handCards.Callback = OnSyncListHandCardsChanged;
     }
-
-    private void OnSyncListHandCardsChanged(SyncList<PlayingCard.PlayingCardInfo>.Operation op, int index)
-    {
-        if (isLocalPlayer)
-        {
-            Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
-                      $"Player {netId} was notified of a change in his hand: card {index}: {handCards[index]}");
-            _handButtons[index].image.sprite = PlayingCard.SpriteDict[handCards[index]];
-            _handButtons[index].onClick.RemoveAllListeners();
-            _handButtons[index].onClick.AddListener(() => OnClickCardButton(index));
-        }
-    }
-
-    void OnClickCardButton(int index)
-    {
-        // disable the button GameObject so we cannot play the card again
-        _handButtons[index].gameObject.SetActive(false);
-
-        // tell the server to play the card
-        CmdPlayCard(handCards[index]);
-    }
-
-    #endregion
-
-    #region Server Functions
-
-    [Command]
-    private void CmdPlayCard(PlayingCard.PlayingCardInfo handCard)
-    {
-        Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
-                  $"sending card {handCard} to the GameManager");
-        GameManager.Singleton.CmdPlayCard(handCard);
-    }
-
+    
     [Command]
     private void CmdSetUserName(string newName)
     {
@@ -86,19 +53,6 @@ public class Player : NetworkBehaviour
         RpcSetUserName(newName);
     }
     
-    [Command]
-    private void CmdSelectPreRoundChoice(GameManager.PreRoundChoice choice)
-    {
-        Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
-                  $"player {netId} sending choice {choice} to the GameManager");
-        GameManager.Singleton.CmdHandlePreRoundChoice(netId, choice);
-    }
-
-    #endregion
-
-    #region Client Functions
-
-        
     [ClientRpc]
     public void RpcSetUserName(string newName)
     {
@@ -128,6 +82,10 @@ public class Player : NetworkBehaviour
         }
     }
 
+    #endregion
+
+    #region PreRound
+    
     [ClientRpc]
     public void RpcDisplayPreRoundButtons(GameManager.RoundMode currentRoundMode)
     {
@@ -236,4 +194,72 @@ public class Player : NetworkBehaviour
     }
     
     #endregion
+    
+    #region Round
+    
+    private void OnSyncListHandCardsChanged(SyncList<PlayingCard.PlayingCardInfo>.Operation op, int index)
+    {
+        if (isLocalPlayer)
+        {
+            // TODO check if list was cleared (via op)
+            Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
+                      $"Player {netId} was notified of a change in his hand: card {index}: {handCards[index]}");
+            _handButtons[index].image.sprite = PlayingCard.SpriteDict[handCards[index]];
+            _handButtons[index].onClick.RemoveAllListeners();
+            _handButtons[index].onClick.AddListener(() => OnClickCardButton(index));
+        }
+    }
+
+    [Client]
+    void OnClickCardButton(int index)
+    {
+        // disable the button GameObject so we cannot play the card again
+        _handButtons[index].gameObject.SetActive(false);
+
+        // tell the server to play the card
+        CmdPlayCard(handCards[index]);
+    }
+
+
+    [Command]
+    private void CmdPlayCard(PlayingCard.PlayingCardInfo handCard)
+    {
+        Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
+                  $"sending card {handCard} to the GameManager");
+        GameManager.Singleton.CmdHandlePlayCard(handCard);
+    }
+
+    [Command]
+    private void CmdSelectPreRoundChoice(GameManager.PreRoundChoice choice)
+    {
+        Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
+                  $"player {netId} sending choice {choice} to the GameManager");
+        GameManager.Singleton.CmdHandlePreRoundChoice(netId, choice);
+    }
+    
+    /// <summary>
+    /// enables the hand buttons for the local player. Disables the buttons for every other player
+    /// </summary>
+    [ClientRpc]
+    public void RpcStartTurn()
+    {
+        if (!isLocalPlayer) { return; }
+
+        // enable the card buttons
+        _handButtons.ForEach(button => button.interactable = true);
+    }
+    
+    /// <summary>
+    /// disables the player's hand cards
+    /// </summary>
+    public void RpcEndTurn()
+    {
+        if (!isLocalPlayer) { return; }
+        
+        // disable the card buttons
+        _handButtons.ForEach(button => button.interactable = false);
+    }
+
+    #endregion
+    
 }

@@ -1,10 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using UnityEngine;
 
 public static class PlayingCard
 {
- 
+    #region Playing Card Definition
     // use struct for easy serialization in SyncList
     public struct PlayingCardInfo
     {
@@ -16,6 +17,7 @@ public static class PlayingCard
         }
     }
 
+    [SuppressMessage("ReSharper", "UnusedMember.Global")]
     public enum Suit
     {
         Blatt,
@@ -35,10 +37,14 @@ public static class PlayingCard
         Ober,
         Ass
     }
-
-
+    #endregion
+    
+    #region Static Variables and Helpers
+    
+    
     public static readonly Dictionary<PlayingCardInfo, Sprite> SpriteDict = new Dictionary<PlayingCardInfo, Sprite>();
-
+    public static readonly Sprite DefaultCardSprite = Resources.Load<Sprite>($"Spielkarten/rueckseite");
+    
     private static Sprite LoadSprite(PlayingCardInfo cardInfo)
     {
         string pathSuffix = "";
@@ -121,6 +127,7 @@ public static class PlayingCard
 
         return deck;
     }
-    
-    
+
+    #endregion
+
 }
