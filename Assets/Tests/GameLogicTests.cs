@@ -1,10 +1,10 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using UnityEngine;
 using static GameManager;
 using static PlayingCard;
-using Random = System.Random;
 
 namespace Tests
 {
@@ -12,7 +12,6 @@ namespace Tests
     {
         private readonly List<Player> _players = new List<Player>();
         private readonly List<PlayingCardInfo> _cardDeck = InitializeCardDeck();
-        private readonly Random _rng = new Random();
 
         /// <summary>
         /// Creates 4 players with random cards
@@ -72,26 +71,26 @@ namespace Tests
                 [otherPlayers[1]] = PreRoundChoice.Weiter
             };
 
-            List<IEnumerable<Player>> actualRoundGroups =
+            List<List<Player>> actualRoundGroups =
                 CalculateRoundGroups(playerChoices, _players, RoundMode.SauspielSchelln);
 
-            var expectedRoundGroups = new List<IEnumerable<Player>>
+            var expectedRoundGroups = new List<List<Player>>
             {
-                new[] {schellnSauOwner, schellnSauSeeker},
-                new[] {otherPlayers[0], otherPlayers[1]}
+                new List<Player> {schellnSauOwner, schellnSauSeeker},
+                new List<Player> {otherPlayers[0], otherPlayers[1]}
             };
 
             AssertAreEquivalent(expectedRoundGroups, actualRoundGroups);
         }
 
-        private static void AssertAreEquivalent(List<IEnumerable<Player>> expectedGroups,
-            List<IEnumerable<Player>> actualGroups)
+        private static void AssertAreEquivalent(List<List<Player>> expectedGroups,
+            List<List<Player>> actualGroups)
         {
             Assert.AreEqual(expectedGroups.Count, actualGroups.Count);
             foreach (var expectedGroup in expectedGroups.ToList())
             {
                 // find the expected Group matching the actual group and remove it
-                IEnumerable<Player> matchingExpectedGroup =
+                List<Player> matchingExpectedGroup =
                     expectedGroups.Find(g => g.SequenceEqual(expectedGroup));
 
                 Assert.NotNull(matchingExpectedGroup);
@@ -100,6 +99,70 @@ namespace Tests
             
             // we should have removed every element from the expected groups
             Assert.AreEqual(0, expectedGroups.Count);
+        }
+        
+        [Test]
+        public void ScoreBoardRow_AddSingleEntry()
+        {
+            Extensions.ScoreBoardRow row = new Extensions.ScoreBoardRow();
+            Assert.AreEqual(0, row.EntryCount);
+            
+            row.AddEntry("Luis", 42);
+
+            Assert.AreEqual(1, row.EntryCount);
+        }
+
+        [Test]
+        public void ScoreBoardRow_Add4Entries()
+        {
+            Extensions.ScoreBoardRow row = new Extensions.ScoreBoardRow();
+            Assert.AreEqual(0, row.EntryCount);
+            
+            row.AddEntry("Lukian", 42);
+            Assert.AreEqual(1, row.EntryCount);
+
+            row.AddEntry("Nuria", 26);
+            Assert.AreEqual(2, row.EntryCount);
+
+            row.AddEntry("Lena", 13);
+            Assert.AreEqual(3, row.EntryCount);
+
+            row.AddEntry("Meo", 99);
+            Assert.AreEqual(4, row.EntryCount);
+
+        }
+        
+        [Test]
+        public void ScoreBoardRow_AddTooMuchEntries()
+        {
+            Extensions.ScoreBoardRow row = new Extensions.ScoreBoardRow();
+            Assert.AreEqual(0, row.EntryCount);
+            
+            row.AddEntry("Lukian", 51);
+            row.AddEntry("Nuria", 26);
+            row.AddEntry("Lena", 13);
+            row.AddEntry("Meo", 99);
+            
+            Assert.AreEqual(4, row.EntryCount);
+
+            Assert.Catch<InvalidOperationException>(() => row.AddEntry("Luis", 42));
+
+            Assert.AreEqual(4, row.EntryCount);
+        }
+        
+        [Test]
+        public void ScoreBoardRow_AmendExistingEntry()
+        {
+            Extensions.ScoreBoardRow row = new Extensions.ScoreBoardRow();
+            Assert.AreEqual(0, row.EntryCount);
+            
+            row.AddEntry("Luis", 15);
+            Assert.AreEqual(1, row.EntryCount);
+            Assert.AreEqual(row.Entries[0].score, 15);
+
+            row.AddEntry("Luis", 27);
+            Assert.AreEqual(1, row.EntryCount);
+            Assert.AreEqual(row.Entries[0].score, 42);
         }
     }
 }
