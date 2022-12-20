@@ -19,6 +19,17 @@ public static class PlayingCard
             this.rank = rank;
         }
 
+        public PlayingCardInfo(IReadOnlyList<char> suitRank)
+        {
+            if (suitRank.Count != 2)
+            {
+                throw new ArgumentException("String param has to consist of 2 characters");
+            }
+
+            suit = SuitFromChar(suitRank[0]);
+            rank = RankFromChar(suitRank[1]);
+        }
+        
         public override string ToString()
         {
             return $"{suit} {rank}";
@@ -94,6 +105,45 @@ public static class PlayingCard
         Ass,
         Unter,
         Ober
+    }
+    
+     
+    private static Suit SuitFromChar(char charSuit)
+    {
+        switch (charSuit)
+        {
+            case 'S': return Suit.Schelln;
+            case 'H': return Suit.Herz;
+            case 'B': return Suit.Blatt;
+            case 'E': return Suit.Eichel;
+            default: throw new ArgumentException("Suit has to be one of {S, H, B, E}");
+        }
+    }
+
+    private static Rank RankFromChar(char charRank)
+    {
+        switch (charRank)
+        {
+            case '7':
+                return Rank.Sieben;
+            case '8':
+                return Rank.Acht;
+            case '9':
+                return Rank.Neun;
+            case '1':
+                return Rank.Zehn;
+            case 'U':
+                return Rank.Unter;
+            case 'O':
+                return Rank.Ober;
+            case 'K':
+                return Rank.Koenig;
+            case 'A':
+                return Rank.Ass;
+            default:
+                throw new ArgumentException("Rank has to be one of {7, 8, 9, 1, U, O, K, A}, " +
+                                            $"but was {charRank}");
+        }
     }
     #endregion
 
