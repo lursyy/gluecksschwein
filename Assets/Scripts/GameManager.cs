@@ -8,6 +8,7 @@ using UnityEngine;
 using UnityEngine.Networking;
 using UnityEngine.UI;
 
+[RequireComponent(typeof(AudioSource))]
 public class GameManager : NetworkBehaviour
 {
     public static GameManager Singleton;
@@ -102,6 +103,11 @@ public class GameManager : NetworkBehaviour
     // public class SyncListStich : SyncListStruct<PlayingCard.Stich> {}
     private readonly List<PlayingCard.Stich> _completedStiches = new List<PlayingCard.Stich>();
 
+    [Header("Sounds")]
+    public AudioClip[] soundPlayCardArray;
+    public AudioClip soundShuffle;
+    private AudioSource _audioSource;
+    
     #endregion
 
     
@@ -244,6 +250,7 @@ public class GameManager : NetworkBehaviour
         Singleton = this;
         _cardDeck = PlayingCard.InitializeCardDeck();
         _currentStich.Callback = OnStichCardsChanged;
+        _audioSource = GetComponent<AudioSource>();
     }
 
     public override void OnStartServer()
@@ -373,11 +380,14 @@ public class GameManager : NetworkBehaviour
 
             handedCards += 8;
         }
+
+        // the following has to happen on (all) the clients, hence the RPC
+        RpcOnDealCards();
     }
 
     #endregion
 
-    #region SyncVar Callbacks/Hooks
+    #region SyncVar Callbacks/Hooks (Client)
 
     private void OnStichCardsChanged(SyncList<PlayingCard.PlayingCardInfo>.Operation op, int i)
     {
@@ -387,6 +397,11 @@ public class GameManager : NetworkBehaviour
                 Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
                           $"the server notified me that {_currentStich[i]} was played");
 
+                // play a random card sound
+                soundPlayCardArray.Shuffle();
+                _audioSource.clip = soundPlayCardArray[0];
+                _audioSource.Play();
+                
                 // put the correct image in the position of the just played card
                 playedCardSlots[i].gameObject.SetActive(true);
                 playedCardSlots[i].sprite = PlayingCard.SpriteDict[_currentStich[i]];
@@ -411,5 +426,13 @@ public class GameManager : NetworkBehaviour
         gameStateTextField.text = _gameStateText;
     }
 
+    [ClientRpc]
+    private void RpcOnDealCards()
+    {
+        // play the shuffle sound
+        _audioSource.clip = soundShuffle;
+        _audioSource.Play();
+    }
+    
     #endregion
 }

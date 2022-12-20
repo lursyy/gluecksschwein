@@ -4,6 +4,7 @@ using UnityEngine.Networking;
 #pragma warning disable 618
 
 [RequireComponent(typeof(NetworkManager))]
+// ReSharper disable once InconsistentNaming
 public class CustomNetworkHUD : MonoBehaviour
 {
     /// <summary>
