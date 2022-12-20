@@ -268,9 +268,18 @@ public class Player : NetworkBehaviour
         _handButtons.ForEach(button => button.interactable = false);
 
         // tell the server to play the card
-        GameManager.Singleton.CmdHandlePlayCard(handCards[index]);
+        CmdPlayCard(handCards[index]);
     }
-
+    
+    [Command]
+    // ReSharper disable once MemberCanBeMadeStatic.Local
+    private void CmdPlayCard(PlayingCard.PlayingCardInfo handCard)
+    {
+        Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
+                  $"sending card {handCard} to the GameManager");
+        GameManager.Singleton.CmdHandlePlayCard(handCard);
+    }
+    
     [Command]
     private void CmdSelectPreRoundChoice(GameManager.RoundMode roundMode, PlayingCard.Suit roundSuit)
     {
