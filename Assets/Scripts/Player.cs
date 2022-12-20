@@ -45,8 +45,17 @@ public class Player : NetworkBehaviour
             Debug.Log($"(Local) Player {netId} was notified of a change in his hand: card {index}: {handCards[index]}");
             _handButtons[index].image.sprite = PlayingCard.SpriteDict[handCards[index]];
             _handButtons[index].onClick.RemoveAllListeners();
-            _handButtons[index].onClick.AddListener(() => CmdPlayCard(handCards[index]));
+            _handButtons[index].onClick.AddListener(() => OnClickCardButton(index));
         }
+    }
+
+    void OnClickCardButton(int index)
+    {
+        // disable the button GameObject so we cannot play the card again
+        _handButtons[index].gameObject.SetActive(false);
+
+        // tell the server to play the card
+        CmdPlayCard(handCards[index]);
     }
 
     [Command]
