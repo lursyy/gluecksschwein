@@ -99,7 +99,7 @@ public static class PlayingCard
         }
 
         // TODO disabled for debugging purposes
-        deck.Shuffle();
+        // deck.Shuffle();
 
         return deck;
     }
