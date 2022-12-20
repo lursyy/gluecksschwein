@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Networking;
 using UnityEngine.UI;
@@ -6,24 +7,172 @@ using UnityEngine.UI;
 public class GameManager : NetworkBehaviour
 {
     public static GameManager Singleton;
-    public List<Player> players = new List<Player>();
-    public List<Button> localPlayerCardButtons;
-    public Button dealCardsButton;
+
+    #region Game State Stuff
+
+    public enum GameState
+    {
+        Waiting,
+        GameRunning,
+        PreRound,
+        RoundSau,
+        RoundSolo,
+        RoundWenz,
+        RoundRamsch,
+        RoundFinished
+    }
+
+    private GameState _currentGameState;
 
     [SyncVar(hook = nameof(OnGameStateTextChanged))] [SerializeField]
     private string gameStateText;
 
     [SerializeField] private Text gameStateTextField;
+    
+    #endregion
+
+    #region Player Management
+
+    public List<Player> players = new List<Player>();
+    public List<Button> localPlayerCardButtons;
+    public Button dealCardsButton;
+
+    private Player _startingPlayer;
+    [SerializeField] public List<Button> preRoundButtons; 
+
+    #endregion
+
+    #region Deck Management
 
     private List<PlayingCard.PlayingCardInfo> _cardDeck;
-
-    public class SyncListPlayingCard : SyncListStruct<PlayingCard.PlayingCardInfo>
-    {
-    }
-
+    public class SyncListPlayingCard : SyncListStruct<PlayingCard.PlayingCardInfo> { }
     private readonly SyncListPlayingCard _syncListCardDeck = new SyncListPlayingCard();
+
+    #endregion
+
+    #region Round Management
+    
     [SerializeField] private List<GameObject> playedCardSlots;
     private readonly SyncListPlayingCard _playedCards = new SyncListPlayingCard();
+    
+    #endregion
+    
+    
+    
+    /////////////////// Methods
+    
+    #region Game State Transitions
+
+    /// <summary>
+    /// Used to enter the "WaitingForPlayers" state:
+    /// * we are simply waiting until we have enough players
+    /// </summary>
+    private void EnterStateWaiting()
+    {
+        _currentGameState = GameState.Waiting;
+    }
+
+    /// <summary>
+    /// Used to enter the "Game Running" state
+    /// * show scoreboard
+    /// * host can start a new round
+    /// </summary>
+    private void EnterStateGameRunning()
+    {
+        // check previous game state
+        if (_currentGameState == GameState.Waiting)
+        {
+            // set starting player to the last one so that before the first round the player 0 gets selected
+            _startingPlayer = players[3];
+        }
+
+        // update the game state
+        _currentGameState = GameState.GameRunning;
+
+        gameStateText = "Bereit zum spielen";
+        dealCardsButton.gameObject.SetActive(true);
+        dealCardsButton.onClick.AddListener(EnterStatePreRound);
+        // TODO: show scoreboard
+    }
+
+    /// <summary>
+    /// Used to enter the "Pre Round" state
+    /// * Cards are dealt to the players
+    /// * All the players are asked whether they want to "play" or "pass" (startingPlayer is asked first)
+    /// * (if everybody passes, a Ramsch has to be initialized)
+    /// </summary>
+    private void EnterStatePreRound()
+    {
+        // update the game state
+        _currentGameState = GameState.PreRound;
+
+        // deal the cards to the players
+        DealCards();
+
+        // update the starting player
+        _startingPlayer = SelectNextStartingPlayer();
+
+        Player currentPreRoundDecider = _startingPlayer;
+
+        // Display the Pre Round Buttons for the currently deciding player
+        currentPreRoundDecider.RpcDisplayPreRoundButtons();
+    }
+
+    private Player SelectNextStartingPlayer()
+    {
+        // gib mir den index des aktuellen _startingPlayers
+        int lastStartingPlayerIndex = players.IndexOf(_startingPlayer);
+
+        int newStartingPlayerIndex = lastStartingPlayerIndex + 1;
+        if (newStartingPlayerIndex == 4)
+        {
+            newStartingPlayerIndex = 0;
+        }
+
+        return players[newStartingPlayerIndex];
+    }
+
+    /// <summary>
+    /// Used to enter the "RoundSau" state
+    /// </summary>
+    private void EnterStateRoundSau()
+    {
+        _currentGameState = GameState.RoundSau;
+    }
+
+    /// <summary>
+    /// Used to enter the "RoundSolo" state
+    /// </summary>
+    private void EnterStateRoundSolo()
+    {
+        _currentGameState = GameState.RoundSolo;
+    }
+
+    /// <summary>
+    /// Used to enter the "RoundWenz" state
+    /// </summary>
+    private void EnterStateRoundWenz()
+    {
+        _currentGameState = GameState.RoundWenz;
+    }
+
+    /// <summary>
+    /// Used to enter the "RoundRamsch" state
+    /// </summary>
+    private void EnterStateRoundRamsch()
+    {
+        _currentGameState = GameState.RoundRamsch;
+    }
+
+    /// <summary>
+    /// Used to enter the "Round Finished" state
+    /// </summary>
+    private void EnterStateRoundFinished()
+    {
+        _currentGameState = GameState.RoundFinished;
+    }
+
+    #endregion
     
     // Start is called before the first frame update
     private void Awake()
@@ -39,9 +188,11 @@ public class GameManager : NetworkBehaviour
         {
             _syncListCardDeck.Add(cardInfo);
         }
-        
-        gameStateText = "Warte auf Spieler... (1)";
+
+        EnterStateWaiting();
     }
+
+    #region Server Stuff / Commands
 
     [Command]
     public void CmdPlayCard(PlayingCard.PlayingCardInfo cardInfo)
@@ -51,49 +202,24 @@ public class GameManager : NetworkBehaviour
         // add the card to the played cards
         _playedCards.Add(cardInfo);
     }
-
-    private void OnCardPlayed(SyncList<PlayingCard.PlayingCardInfo>.Operation op, int i)
-    {
-        Debug.Log($"GameManager::RpcPlayCard: the server notified me that {_playedCards[i]} was played");
-
-        // put the correct image in the position of the just played card
-        playedCardSlots[i].SetActive(true);
-        playedCardSlots[i].GetComponent<Image>().sprite = PlayingCard.SpriteDict[_playedCards[i]];
-    }
-
+    
     [Server]
     public void AddPlayer(Player player)
     {
         Debug.Log($"GameManager::AddPlayer called, adding Player {player.netId}");
         players.Add(player);
-
+        
         gameStateText = $"Warte auf Spieler... ({players.Count})";
 
         if (players.Count == 4)
         {
-            EnterReadyState();
+            EnterStateGameRunning();
         }
     }
 
-    private void EnterReadyState()
-    {
-        gameStateText = "Bereit zum spielen";
-        dealCardsButton.gameObject.SetActive(true);
-        dealCardsButton.onClick.AddListener(StartRound);
-    }
-
-
     /// <summary>
-    /// Starts a new round TODO what does "round" mean?
-    /// </summary>
-    private void StartRound()
-    {
-        gameStateText = "Runde geht los...";
-        DealCards();
-    }
-
-    /// <summary>
-    /// Gives out the cards from the deck: card 00-07 to player 1, card 08-15 to player 2, card 16-23 to player 3, card 24-31 to player 4
+    /// Gives out the cards from the deck:
+    /// card 00-07 to player 1, card 08-15 to player 2, card 16-23 to player 3, card 24-31 to player 4
     /// </summary>
     [Server]
     public void DealCards()
@@ -111,13 +237,26 @@ public class GameManager : NetworkBehaviour
 
             handedCards += 8;
         }
+    }
 
-        // localPlayer.UpdateButtons();
+    #endregion
+
+    #region SyncVar Callbacks/Hooks
+
+    private void OnCardPlayed(SyncList<PlayingCard.PlayingCardInfo>.Operation op, int i)
+    {
+        Debug.Log($"GameManager::RpcPlayCard: the server notified me that {_playedCards[i]} was played");
+
+        // put the correct image in the position of the just played card
+        playedCardSlots[i].SetActive(true);
+        playedCardSlots[i].GetComponent<Image>().sprite = PlayingCard.SpriteDict[_playedCards[i]];
     }
 
     void OnGameStateTextChanged(string newText)
     {
         Debug.Log($"GameManager::{nameof(OnGameStateTextChanged)}: new text = \"{newText}\"");
-        gameStateTextField.text = newText;
+        gameStateTextField.text = gameStateText = newText;
     }
+
+    #endregion
 }
