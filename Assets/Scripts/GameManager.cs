@@ -30,6 +30,22 @@ public class GameManager : NetworkBehaviour
 
     [SerializeField] private Text gameStateTextField;
     
+    public enum RoundMode
+    {
+        Sauspiel,
+        Solo,
+        Wenz,
+        Ramsch
+    }
+    
+    public enum PreRoundChoice
+    {
+        Sauspiel,
+        Solo,
+        Wenz,
+        Weiter
+    }
+
     #endregion
 
     #region Player Management
@@ -129,20 +145,6 @@ public class GameManager : NetworkBehaviour
         currentPreRoundDecider.RpcDisplayPreRoundButtons();
     }
 
-    private Player SelectNextStartingPlayer()
-    {
-        // gib mir den index des aktuellen _startingPlayers
-        int lastStartingPlayerIndex = players.IndexOf(_startingPlayer);
-
-        int newStartingPlayerIndex = lastStartingPlayerIndex + 1;
-        if (newStartingPlayerIndex == 4)
-        {
-            newStartingPlayerIndex = 0;
-        }
-
-        return players[newStartingPlayerIndex];
-    }
-
     /// <summary>
     /// Used to enter the "RoundSau" state
     /// </summary>
@@ -183,6 +185,29 @@ public class GameManager : NetworkBehaviour
         currentGameState = GameState.RoundFinished;
     }
 
+    private Player SelectNextStartingPlayer()
+    {
+        // gib mir den index des aktuellen _startingPlayers
+        int lastStartingPlayerIndex = players.IndexOf(_startingPlayer);
+
+        int newStartingPlayerIndex = lastStartingPlayerIndex + 1;
+        if (newStartingPlayerIndex == 4)
+        {
+            newStartingPlayerIndex = 0;
+        }
+
+        return players[newStartingPlayerIndex];
+    }
+
+    [Command]
+    public void CmdSelectPreRoundChoice(NetworkInstanceId playerId, PreRoundChoice playerChoice)
+    {
+        Debug.Log($"{nameof(GameManager)}::{nameof(CmdSelectPreRoundChoice)}: player {playerId} chose {playerChoice}");
+        // TODO compute remaining options for other players
+        // TODO display buttons to the next player
+        throw new NotImplementedException();
+    }
+    
     #endregion
     
     // Start is called before the first frame update
@@ -256,7 +281,7 @@ public class GameManager : NetworkBehaviour
 
     private void OnCardPlayed(SyncList<PlayingCard.PlayingCardInfo>.Operation op, int i)
     {
-        Debug.Log($"GameManager::RpcPlayCard: the server notified me that {_playedCards[i]} was played");
+        Debug.Log($"GameManager::OnCardPlayed: the server notified me that {_playedCards[i]} was played");
 
         // put the correct image in the position of the just played card
         playedCardSlots[i].SetActive(true);
@@ -265,8 +290,9 @@ public class GameManager : NetworkBehaviour
 
     void OnGameStateTextChanged(string newText)
     {
-        Debug.Log($"GameManager::{nameof(OnGameStateTextChanged)}: new text = \"{newText}\"");
-        gameStateTextField.text = gameStateText = newText;
+        Debug.Log($"GameManager::{nameof(OnGameStateTextChanged)}: new text = \"{gameStateText}\"");
+        gameStateText = newText;
+        gameStateTextField.text = gameStateText;
     }
 
     #endregion

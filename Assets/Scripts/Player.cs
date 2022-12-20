@@ -131,9 +131,10 @@ public class Player : NetworkBehaviour
     public void OnPreRoundChooseSauSpiel()
     {
         if (!isLocalPlayer) { return; }
-        RemovePreRoundButtons();
         
-        throw new NotImplementedException();
+        Debug.Log($"Player {netId} chose Sauspiel");
+        RemovePreRoundButtons();
+        CmdSelectPreRoundChoice(GameManager.PreRoundChoice.Sauspiel);
     }
 
     [Client]
@@ -161,6 +162,13 @@ public class Player : NetworkBehaviour
         RemovePreRoundButtons();
 
         throw new NotImplementedException();
+    }
+
+    [Command]
+    private void CmdSelectPreRoundChoice(GameManager.PreRoundChoice choice)
+    {
+        Debug.Log($"{nameof(Player)}::{nameof(CmdSelectPreRoundChoice)}: player {netId} sending choice {choice} to the GameManager");
+        GameManager.Singleton.CmdSelectPreRoundChoice(netId, choice);
     }
 
     private void RemovePreRoundButtons()
