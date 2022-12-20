@@ -100,10 +100,13 @@ public class GameManager : NetworkBehaviour
     /// round groups share their points and "play together"
     /// </summary>
     private List<IEnumerable<Player>> _roundGroups = new List<IEnumerable<Player>>();
-    
-    public PlayingCard.Suit CurrentTrumpSuit { get; private set; }
 
+    private class SyncListScoreBoard : SyncListStruct<Extensions.ScoreBoardRow> { }
+    private readonly SyncListScoreBoard _scoreBoard = new SyncListScoreBoard();
+
+    private PlayingCard.Suit CurrentTrumpSuit { get; set; }
     
+
     [SerializeField] private Image[] playedCardSlots = new Image[4];
 
     private readonly SyncListPlayingCard _currentStich = new SyncListPlayingCard();
@@ -240,20 +243,37 @@ public class GameManager : NetworkBehaviour
         CurrentGameState = GameState.RoundFinished;
         Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
                   "Round finished!");
-        
-        // count scores in stiches, and add to player scores
-        foreach (var entry in _completedStiches)
-        {
-            int stichWorth = entry.Key.CalculateStichWorth(CurrentRoundMode);
-            Player stichWinner = entry.Value;
-            throw new NotImplementedException("WIP");
-            // TODO check _roundGroups and add the score to every player in the group?
-        }
-        
-        // TODO show scoreboard?
+
+        UpdateScoreBoard();
     }
 
-    
+    [Server]
+    private void UpdateScoreBoard()
+    {
+        // We have two options:
+        // 1. count each player's score, and then add the score to each player of the respective group
+        // 2. while looking at each stich, directly add the score to each player of the respective group
+        // 
+        // 1. is more like you would do in real life, so I chose that.
+
+        var roundScore = new Extensions.ScoreBoardRow();
+
+        foreach (var player in _players)
+        {
+            int playerRoundScore = _completedStiches
+                .Where(pair => pair.Value.Equals(player))
+                .Sum(pair => pair.Key.CalculateStichWorth(CurrentRoundMode));
+
+            // add the player's round score to each member of their group, including themselves
+            foreach (var groupPlayer in _roundGroups.Find(group => group.Contains(player)))
+            {
+                roundScore.AddEntry(groupPlayer.playerName, playerRoundScore);
+            }
+        }
+        
+        _scoreBoard.Add(roundScore);
+    }
+
     #endregion
 
     #region Server Stuff / Commands
