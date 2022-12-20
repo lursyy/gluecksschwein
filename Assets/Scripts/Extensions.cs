@@ -76,7 +76,7 @@ public static class Extensions
         return currentWinner;
     }
 
-    private static Card CompareCards(Card bottomCard, Card topCard, List<Card> trumps)
+    private static Card CompareCards(Card bottomCard, Card topCard, IList<Card> trumps)
     {
         int bottomCardPrecedence = trumps.IndexOf(bottomCard);
         int topCardPrecedence = trumps.IndexOf(topCard);
