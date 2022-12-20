@@ -11,8 +11,6 @@ public class CustomNetworkHUD : MonoBehaviour
     /// </summary>
     private NetworkManager _manager;
 
-    private NetworkTransform bla;
-
     /// <summary>
     /// The horizontal offset in pixels to draw the HUD runtime GUI at.
     /// </summary>

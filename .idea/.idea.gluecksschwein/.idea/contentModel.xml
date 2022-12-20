@@ -8,8 +8,8 @@
       <e p="Assets" t="Include">
         <e p="Scripts" t="Include">
           <e p="CustomNetworkHUD.cs" t="Include" />
-          <e p="CustomNetworkManager.cs" t="Include" />
           <e p="Extensions.cs" t="Include" />
+          <e p="FullscreenCheck.cs" t="Include" />
           <e p="GameManager.cs" t="Include" />
           <e p="Player.cs" t="Include" />
           <e p="PlayingCard.cs" t="Include" />
