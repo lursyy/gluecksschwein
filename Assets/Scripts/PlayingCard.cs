@@ -1,8 +1,6 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Networking;
 
 public static class PlayingCard
 {
@@ -12,6 +10,10 @@ public static class PlayingCard
     {
         public Rank Rank;
         public Suit Suit;
+        public override string ToString()
+        {
+            return $"{Suit} {Rank}";
+        }
     }
 
     public enum Suit
@@ -27,17 +29,17 @@ public static class PlayingCard
         Sieben,
         Acht,
         Neun,
-        Koenig,
         Zehn,
+        Koenig,
         Unter,
         Ober,
         Ass
     }
 
 
-    public static Dictionary<PlayingCardInfo, Sprite> SpriteDict = new Dictionary<PlayingCardInfo, Sprite>();
+    public static readonly Dictionary<PlayingCardInfo, Sprite> SpriteDict = new Dictionary<PlayingCardInfo, Sprite>();
 
-    public static Sprite GetSprite(PlayingCardInfo cardInfo)
+    private static Sprite LoadSprite(PlayingCardInfo cardInfo)
     {
         string pathSuffix = "";
         pathSuffix += cardInfo.Suit.ToString().ToLower();
@@ -70,6 +72,10 @@ public static class PlayingCard
         }
     }
 
+    /// <summary>
+    /// Make sure to only call this method ONCE, because it loads all the sprites
+    /// </summary>
+    /// <returns></returns>
     public static List<PlayingCardInfo> InitializeCardDeck()
     {
         var deck = new List<PlayingCardInfo>();
@@ -88,10 +94,11 @@ public static class PlayingCard
                 deck.Add(cardInfo);
                 
                 // also store the sprite in the dictionary for later access
-                SpriteDict[cardInfo] = GetSprite(cardInfo);
+                SpriteDict[cardInfo] = LoadSprite(cardInfo);
             }
         }
 
+        // TODO disabled for debugging purposes
         deck.Shuffle();
 
         return deck;
