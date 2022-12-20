@@ -64,12 +64,16 @@ public static class PlayingCard
         }
     }
 
+    /**
+     * The Suit Enum is ordered by increasing trump-precedence so we can use it to compare two trump cards
+     * see also GameManager.GetTrumpList
+     */
     public enum Suit
     {
-        Blatt,
-        Eichel,
         Schelln,
-        Herz
+        Herz,
+        Blatt,
+        Eichel
     }
 
     /**
@@ -79,7 +83,6 @@ public static class PlayingCard
      *
      * This ordering will also be helpful if we decide to use
      * our saulib library for determining the stich winner later.
-     * TODO test if this enum ordering produces problems
      */
     public enum Rank
     {
@@ -98,39 +101,43 @@ public static class PlayingCard
 
     public struct Stich
     {
-        private PlayingCardInfo[] _cards;
-        public int CardCount { get; private set; }
+        private Stack<PlayingCardInfo> _cards;
+        public int CardCount => _cards.Count;
 
         public bool IsComplete => CardCount == 4;
 
         public void AddCard(PlayingCardInfo card)
         {
+            if (_cards == null)
+            {
+                _cards = new Stack<PlayingCardInfo>(4);
+            }
+            
             if (IsComplete)
             {
                 throw new InvalidOperationException("Stich already complete, cannot add card");
             }
-            
-            if (_cards == null)
-            {
-                _cards = new PlayingCardInfo[4];
-            }
-            
-            _cards[CardCount] = card;
-            CardCount++;
+
+            _cards.Push(card);
         }
 
-        public void AddAll(PlayingCardInfo[] cards)
+        public void AddAll(IEnumerable<PlayingCardInfo> cards)
         {
             foreach (PlayingCardInfo card in cards)
             {
                 AddCard(card);
             }
         }
+        
+        // hopefully we never need this
+        public PlayingCardInfo[] Cards => _cards.ToArray();
 
-        public PlayingCardInfo GetCard(int index)
+        public PlayingCardInfo RemoveTop()
         {
-            return _cards[index];
+            return _cards.Pop();
         }
+
+        public PlayingCardInfo Top => _cards.Peek();
 
         public int Worth
         {
@@ -224,9 +231,6 @@ public static class PlayingCard
                 SpriteDict[cardInfo] = LoadSprite(cardInfo);
             }
         }
-
-        // TODO disabled for debugging purposes
-        // deck.Shuffle();
 
         return deck;
     }

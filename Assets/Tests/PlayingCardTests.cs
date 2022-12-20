@@ -1,9 +1,19 @@
-﻿using NUnit.Framework;
+﻿using System.Collections.Generic;
+using System.Linq;
+using NUnit.Framework;
 
 namespace Tests
 {
     public class PlayingCardTests
     {
+        private List<PlayingCard.PlayingCardInfo> _cardDeck;
+        
+        [SetUp]
+        public void Setup()
+        {
+            _cardDeck = PlayingCard.InitializeCardDeck();
+        }
+        
         [Test]
         public void PlayingCardEquals()
         {
@@ -20,8 +30,14 @@ namespace Tests
         [Test]
         public void CardSpritesLoadingCorrectly()
         {
-            var cardDeck = PlayingCard.InitializeCardDeck();
-            CollectionAssert.AllItemsAreNotNull(cardDeck);
+            CollectionAssert.AllItemsAreNotNull(_cardDeck);
+        }
+
+        [Test]
+        public void CheckTotalCardWorth()
+        {
+            var totalCardWorth = _cardDeck.Sum(c => c.Worth);
+            Assert.AreEqual(120, totalCardWorth);
         }
 
     }

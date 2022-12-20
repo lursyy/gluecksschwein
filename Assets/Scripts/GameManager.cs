@@ -43,7 +43,7 @@ public class GameManager : NetworkBehaviour
 
     [Header("General")] [SerializeField] private TextMeshProUGUI gameStateTextField;
 
-    public enum RoundMode // TODO add specific Solo modes?
+    public enum RoundMode
     {
         Ramsch,
         Sauspiel,

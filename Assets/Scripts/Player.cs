@@ -71,7 +71,7 @@ public class Player : NetworkBehaviour
     [Client]
     private void OnGUI()
     {
-        // TODO display player name during game
+        // TODO maybe display player name during game
         
         if (!isLocalPlayer || GameManager.Singleton.CurrentGameState > GameManager.GameState.GameRunning) return;
 
@@ -176,6 +176,8 @@ public class Player : NetworkBehaviour
         
         // TODO get the wenz suit from the user via the UI (create dropdown like with Sauspiel)
         PlayingCard.Suit additionalTrumps = PlayingCard.Suit.Herz;
+        
+        // TODO !!! There is also a Wenz without additional Trumps (Farbloser Wenz) !!!
         
         CmdSelectPreRoundChoice(GameManager.RoundMode.Wenz, additionalTrumps);
     }
