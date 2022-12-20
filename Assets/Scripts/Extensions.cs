@@ -8,7 +8,7 @@ using Card = PlayingCard.PlayingCardInfo;
 
 public static class Extensions
 {
-    private static readonly Random Rng = new Random();
+    private static readonly Random Rng = new();
 
     // TODO duplicate code...
     public static void Shuffle<T>(this NetworkList<T> list) where T : unmanaged, IEquatable<T>
@@ -90,7 +90,7 @@ public static class Extensions
         if (bottomCardPrecedence == -1 && topCardPrecedence == -1)
             // Neither of the cards are trumps.
             // In order to win, the top card has to match the suit and have a higher rank
-            return topCard.suit == bottomCard.suit && topCard.rank > bottomCard.rank ? topCard : bottomCard;
+            return topCard.Suit == bottomCard.Suit && topCard.Rank > bottomCard.Rank ? topCard : bottomCard;
 
         // Both cards having the same precedence means that something is really wrong.
         Assert.AreNotEqual(bottomCardPrecedence, topCardPrecedence);
@@ -103,7 +103,7 @@ public static class Extensions
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    public struct ScoreBoardRow : IEquatable<ScoreBoardRow>
+    public struct ScoreBoardRow : INetworkSerializable, IEquatable<ScoreBoardRow>
     {
         // TODO this can't be right... how can I use an array here?
         private ScoreBoardEntry entry1;
@@ -132,29 +132,47 @@ public static class Extensions
                    entry3.Equals(other.entry3) &&
                    entry4.Equals(other.entry4);
         }
+
+        public void NetworkSerialize<T>(BufferSerializer<T> serializer) where T : IReaderWriter
+        {
+            serializer.SerializeValue(ref entry1);
+            serializer.SerializeValue(ref entry2);
+            serializer.SerializeValue(ref entry3);
+            serializer.SerializeValue(ref entry4);
+        }
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    public struct ScoreBoardEntry : IEquatable<ScoreBoardEntry>
+    public struct ScoreBoardEntry : INetworkSerializable, IEquatable<ScoreBoardEntry>
     {
         // TODO check if 32 bytes is enough
-        public readonly FixedString32Bytes name;
-        public int score;
+        public FixedString32Bytes Name => _name;
 
-        public ScoreBoardEntry(String name, int score)
+        public int Score => _score;
+
+        private FixedString32Bytes _name;
+        private int _score;
+
+        public ScoreBoardEntry(FixedString32Bytes name, int score)
         {
-            this.name = name;
-            this.score = score;
+            _name = name;
+            _score = score;
         }
 
         public override string ToString()
         {
-            return $"{name}:{score}";
+            return $"{Name.Value}:{Score}";
+        }
+
+        public void NetworkSerialize<T>(BufferSerializer<T> serializer) where T : IReaderWriter
+        {
+            serializer.SerializeValue(ref _name);
+            serializer.SerializeValue(ref _score);
         }
 
         public bool Equals(ScoreBoardEntry other)
         {
-            return name.Equals(other.name) && score == other.score;
+            return Name.Equals(other.Name) && Score == other.Score;
         }
 
         public override bool Equals(object obj)
@@ -166,7 +184,7 @@ public static class Extensions
         {
             unchecked
             {
-                return (name.GetHashCode() * 397) ^ score;
+                return (Name.GetHashCode() * 397) ^ Score;
             }
         }
     }

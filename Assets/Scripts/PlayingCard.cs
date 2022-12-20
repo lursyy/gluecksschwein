@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.Assertions;
 
@@ -55,33 +56,42 @@ public static class PlayingCard
     #region Playing Card Definition
 
     // use struct for easy serialization in SyncList
-    public readonly struct PlayingCardInfo : IEquatable<PlayingCardInfo>
+    public struct PlayingCardInfo : INetworkSerializable, IEquatable<PlayingCardInfo>
     {
-        public readonly Suit suit;
-        public readonly Rank rank;
+        public Suit Suit => _suit;
+        public Rank Rank => _rank;
+
+        private Rank _rank;
+        private Suit _suit;
 
         public PlayingCardInfo(Suit suit, Rank rank)
         {
-            this.suit = suit;
-            this.rank = rank;
+            _suit = suit;
+            _rank = rank;
         }
 
         public PlayingCardInfo(IReadOnlyList<char> suitRank)
         {
             if (suitRank.Count != 2) throw new ArgumentException("String param has to consist of 2 characters");
 
-            suit = SuitFromChar(suitRank[0]);
-            rank = RankFromChar(suitRank[1]);
+            _suit = SuitFromChar(suitRank[0]);
+            _rank = RankFromChar(suitRank[1]);
         }
 
         public override string ToString()
         {
-            return $"{suit} {rank}";
+            return $"{Suit} {Rank}";
+        }
+
+        public void NetworkSerialize<T>(BufferSerializer<T> serializer) where T : IReaderWriter
+        {
+            serializer.SerializeValue(ref _suit);
+            serializer.SerializeValue(ref _rank);
         }
 
         public bool Equals(PlayingCardInfo other)
         {
-            return suit == other.suit && rank == other.rank;
+            return Suit == other.Suit && Rank == other.Rank;
         }
 
         public override bool Equals(object obj)
@@ -93,30 +103,22 @@ public static class PlayingCard
         {
             unchecked
             {
-                return ((int)suit * 397) ^ (int)rank;
+                return ((int)Suit * 397) ^ (int)Rank;
             }
         }
 
-        public int Worth
+        public int Worth => Rank switch
         {
-            get
-            {
-                switch (rank)
-                {
-                    case Rank.Sieben:
-                    case Rank.Acht:
-                    case Rank.Neun: return 0;
-
-                    case Rank.Unter: return 2;
-                    case Rank.Ober: return 3;
-                    case Rank.Koenig: return 4;
-                    case Rank.Zehn: return 10;
-                    case Rank.Ass: return 11;
-                    default:
-                        throw new ArgumentOutOfRangeException();
-                }
-            }
-        }
+            Rank.Sieben => 0,
+            Rank.Acht => 0,
+            Rank.Neun => 0,
+            Rank.Unter => 2,
+            Rank.Ober => 3,
+            Rank.Koenig => 4,
+            Rank.Zehn => 10,
+            Rank.Ass => 11,
+            _ => throw new ArgumentOutOfRangeException()
+        };
     }
 
     /**
@@ -192,14 +194,14 @@ public static class PlayingCard
 
     #region Static Variables and Helpers
 
-    public static readonly Dictionary<PlayingCardInfo, Sprite> SpriteDict = new Dictionary<PlayingCardInfo, Sprite>();
+    public static readonly Dictionary<PlayingCardInfo, Sprite> SpriteDict = new();
     public static readonly Sprite DefaultCardSprite = Resources.Load<Sprite>("Spielkarten/rueckseite");
 
     private static Sprite LoadSprite(PlayingCardInfo cardInfo)
     {
         var pathSuffix = "";
-        pathSuffix += cardInfo.suit.ToString().ToLower();
-        pathSuffix += GetRankFileSuffix(cardInfo.rank);
+        pathSuffix += cardInfo.Suit.ToString().ToLower();
+        pathSuffix += GetRankFileSuffix(cardInfo.Rank);
         return Resources.Load<Sprite>($"Spielkarten/{pathSuffix}");
     }
 

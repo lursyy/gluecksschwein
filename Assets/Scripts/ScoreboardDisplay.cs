@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using Unity.Collections;
+using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -10,10 +11,10 @@ public class ScoreboardDisplay : MonoBehaviour
     public List<Text> playerNameTextFields;
     public ScoreboardRowDisplay rowTemplate;
 
-    public void AddScoreBoardRow(FixedString32Bytes[] playerNames, Extensions.ScoreBoardRow rowToAdd)
+    public void AddScoreBoardRow(SerializableString[] playerNames, Extensions.ScoreBoardRow rowToAdd)
     {
         // display the player names
-        for (var i = 0; i < playerNames.Length; i++) playerNameTextFields[i].text = playerNames[i].Value;
+        for (var i = 0; i < playerNames.Length; i++) playerNameTextFields[i].text = playerNames[i].value;
 
         AddScoresAtCorrectName(playerNames, rowToAdd);
     }
@@ -22,15 +23,15 @@ public class ScoreboardDisplay : MonoBehaviour
     ///     Fills the Score Board UI with the entries, ensuring that each entry is displayed under the correct player
     ///     (The order of the ScoreBoardRow is independent from the playerNames in the UI)
     /// </summary>
-    private void AddScoresAtCorrectName(FixedString32Bytes[] playerNames, Extensions.ScoreBoardRow rowToAdd)
+    private void AddScoresAtCorrectName(IEnumerable<SerializableString> playerNames, Extensions.ScoreBoardRow rowToAdd)
     {
         // create a new List of scores which will have the correct order
         var scoresInCorrectOrder = new List<int>();
         foreach (var playerName in playerNames) // the LINQ expression suggested by Rider is too wild for me
         {
             var playerEntry = rowToAdd.Entries.ToList()
-                .Find(entry => entry.name.Equals(playerName));
-            scoresInCorrectOrder.Add(playerEntry.score);
+                .Find(entry => entry.Name == playerName.value);
+            scoresInCorrectOrder.Add(playerEntry.Score);
         }
 
         var rowDisplay = Instantiate(rowTemplate, scoreboardContent);

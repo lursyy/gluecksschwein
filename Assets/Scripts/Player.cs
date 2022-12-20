@@ -57,7 +57,7 @@ public class Player : NetworkBehaviour
     [ServerRpc]
     private void SetUserNameServerRpc(string newName)
     {
-        Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
+        Debug.Log($"{MethodBase.GetCurrentMethod()?.DeclaringType}::{MethodBase.GetCurrentMethod()?.Name}: " +
                   $"Player {NetworkObjectId} was asked to change name");
         PlayerName = newName;
         name = newName;
@@ -72,7 +72,7 @@ public class Player : NetworkBehaviour
             return;
         }
 
-        Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
+        Debug.Log($"{MethodBase.GetCurrentMethod()?.DeclaringType}::{MethodBase.GetCurrentMethod()?.Name}: " +
                   $"Player {NetworkObjectId} was asked to change name");
         PlayerName = newName;
         name = newName;
@@ -89,7 +89,7 @@ public class Player : NetworkBehaviour
         // are we on the client that is controlling this player? otherwise, stop here
         if (!IsLocalPlayer) return;
 
-        Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
+        Debug.Log($"{MethodBase.GetCurrentMethod()?.DeclaringType}::{MethodBase.GetCurrentMethod()?.Name}: " +
                   $"client {NetworkObjectId} was asked to display the preRound buttons, {nameof(currentRoundMode)}={currentRoundMode}");
 
         // disable specific buttons depending on the current game mode
@@ -266,7 +266,7 @@ public class Player : NetworkBehaviour
     // ReSharper disable once MemberCanBeMadeStatic.Local
     private void PlayCardServerRpc(PlayingCard.PlayingCardInfo handCard)
     {
-        Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
+        Debug.Log($"{MethodBase.GetCurrentMethod()?.DeclaringType}::{MethodBase.GetCurrentMethod()?.Name}: " +
                   $"sending card {handCard} to the GameManager");
         GameManager.Singleton.HandlePlayCardServerRpc(handCard);
     }
@@ -274,7 +274,7 @@ public class Player : NetworkBehaviour
     [ServerRpc]
     private void SelectPreRoundChoiceServerRpc(GameManager.RoundMode roundMode, PlayingCard.Suit roundSuit)
     {
-        Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
+        Debug.Log($"{MethodBase.GetCurrentMethod()?.DeclaringType}::{MethodBase.GetCurrentMethod()?.Name}: " +
                   $"player {NetworkObjectId} sending roundMode {roundMode}, roundSuit {roundSuit} to the GameManager");
         GameManager.Singleton.HandlePreRoundChoiceServerRpc(NetworkObjectId, roundMode, roundSuit);
     }
@@ -292,4 +292,26 @@ public class Player : NetworkBehaviour
     }
 
     #endregion
+}
+
+public class SerializableString : INetworkSerializable
+{
+    public string value;
+
+    public SerializableString(string value)
+    {
+        this.value = value;
+    }
+
+    public void NetworkSerialize<T>(BufferSerializer<T> serializer) where T : IReaderWriter
+    {
+        if (serializer.IsWriter)
+        {
+            serializer.GetFastBufferWriter().WriteValueSafe(value);
+        }
+        else
+        {
+            serializer.GetFastBufferReader().ReadValueSafe(out value);
+        }
+    }
 }

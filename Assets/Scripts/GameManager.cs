@@ -52,7 +52,7 @@ public class GameManager : NetworkBehaviour
     #region General
 
     private string _joinCode = "";
-    private bool _joinCodeSet = false;
+    private bool _joinCodeSet;
 
     public void SetJoinCode(string joinCode)
     {
@@ -70,13 +70,13 @@ public class GameManager : NetworkBehaviour
         RoundFinished // We enter this state after the last "Stich". Here we can show/count scores
     }
 
-    public NetworkVariable<GameState> CurrentGameState { get; private set; } = new NetworkVariable<GameState>();
-    private NetworkVariable<RoundMode> CurrentRoundMode { get; set; } = new NetworkVariable<RoundMode>();
+    public NetworkVariable<GameState> CurrentGameState { get; private set; } = new();
+    private NetworkVariable<RoundMode> CurrentRoundMode { get; set; } = new();
 
     // private Dictionary<Player, PreRoundChoice> CurrentPreRoundChoices { get; } =
     //     new Dictionary<Player, PreRoundChoice>();
 
-    private NetworkVariable<FixedString64Bytes> _gameStateText = new NetworkVariable<FixedString64Bytes>();
+    private NetworkVariable<FixedString64Bytes> _gameStateText = new();
 
     [Header("General")] [SerializeField] private TextMeshProUGUI gameStateTextField;
 
@@ -89,8 +89,8 @@ public class GameManager : NetworkBehaviour
         Wenz
     }
 
-    private readonly List<Player> _players = new List<Player>();
-
+    private readonly List<Player> _players = new();
+    
     public List<Button> localPlayerCardButtons;
     public TMP_InputField playerNameInput;
     public Button dealCardsButton;
@@ -128,7 +128,7 @@ public class GameManager : NetworkBehaviour
     /// <summary>
     ///     round groups share their points and "play together"
     /// </summary>
-    private List<List<Player>> _roundGroups = new List<List<Player>>();
+    private List<List<Player>> _roundGroups = new();
 
     public NetworkList<Extensions.ScoreBoardRow> ScoreBoard { get; private set; }
     [SerializeField] private ScoreboardDisplay scoreboardDisplay;
@@ -145,14 +145,12 @@ public class GameManager : NetworkBehaviour
 
     public NetworkList<PlayingCard.PlayingCardInfo> CurrentStich { get; private set; }
 
-    private readonly NetworkVariable<PlayingCard.PlayingCardInfo> _currentStichWinner =
-        new NetworkVariable<PlayingCard.PlayingCardInfo>();
+    private readonly NetworkVariable<PlayingCard.PlayingCardInfo> _currentStichWinner = new();
 
     /// <summary>
     ///     Holds the 8 stiches of a round. Is cleared before the start of every round.
     /// </summary>
-    private readonly Dictionary<PlayingCard.Stich, Player> _completedStiches =
-        new Dictionary<PlayingCard.Stich, Player>();
+    private readonly Dictionary<PlayingCard.Stich, Player> _completedStiches = new();
 
     [Header("Sounds")] public AudioClip[] soundPlayCardArray;
     public AudioClip soundShuffle;
@@ -225,7 +223,7 @@ public class GameManager : NetworkBehaviour
     /// </summary>
     private void EnterStateRound()
     {
-        Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
+        Debug.Log($"{MethodBase.GetCurrentMethod()?.DeclaringType}::{MethodBase.GetCurrentMethod()?.Name}: " +
                   $"entering round with {nameof(CurrentRoundMode)}={CurrentRoundMode}.");
 
         CurrentGameState.Value = GameState.Round;
@@ -247,7 +245,7 @@ public class GameManager : NetworkBehaviour
     private void EnterStateRoundFinished()
     {
         CurrentGameState.Value = GameState.RoundFinished;
-        Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
+        Debug.Log($"{MethodBase.GetCurrentMethod()?.DeclaringType}::{MethodBase.GetCurrentMethod()?.Name}: " +
                   "Round finished!");
 
         _players.ForEach(player => player.HandCards.Clear());
@@ -256,7 +254,7 @@ public class GameManager : NetworkBehaviour
 
         _gameStateText.Value = $"Runde {ScoreBoard.Count} beendet";
 
-        FixedString32Bytes[] playerNames = _players.Select(p => new FixedString32Bytes(p.PlayerName)).ToArray();
+        var playerNames = _players.Select(p => new SerializableString(p.PlayerName)).ToArray();
         UpdateAndShowScoreBoardClientRpc(playerNames);
 
         dealCardsButton.gameObject.SetActive(true);
@@ -296,7 +294,7 @@ public class GameManager : NetworkBehaviour
     public void HandlePreRoundChoiceServerRpc(ulong playerId, RoundMode playerChoiceRoundMode,
         PlayingCard.Suit playerChoiceRoundSuit)
     {
-        Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
+        Debug.Log($"{MethodBase.GetCurrentMethod()?.DeclaringType}::{MethodBase.GetCurrentMethod()?.Name}: " +
                   $"player {playerId} chose mode {playerChoiceRoundMode} + suit {playerChoiceRoundSuit}");
 
         // Compute the remaining options for next player
@@ -444,7 +442,7 @@ public class GameManager : NetworkBehaviour
     [ServerRpc]
     public void HandlePlayCardServerRpc(PlayingCard.PlayingCardInfo cardInfo)
     {
-        Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
+        Debug.Log($"{MethodBase.GetCurrentMethod()?.DeclaringType}::{MethodBase.GetCurrentMethod()?.Name}: " +
                   $"someone wants me (the server) to play {cardInfo}");
 
         // add the card to the played cards
@@ -475,7 +473,7 @@ public class GameManager : NetworkBehaviour
 
         // determine who won the stich
         _currentStichWinner.Value = currentStichStruct.CalculateWinningCard(CurrentRoundMode.Value, CurrentRoundSuit);
-        Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
+        Debug.Log($"{MethodBase.GetCurrentMethod()?.DeclaringType}::{MethodBase.GetCurrentMethod()?.Name}: " +
                   $"Server {NetworkObjectId} setting Stich Winner = {_currentStichWinner}");
         var winningPlayer = _players.Cycle(_currentTurnPlayer, CurrentStich.IndexOf(_currentStichWinner.Value) + 1);
 
@@ -497,7 +495,7 @@ public class GameManager : NetworkBehaviour
         // wait for the specified amount of time
         yield return new WaitForSeconds(seconds);
 
-        Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
+        Debug.Log($"{MethodBase.GetCurrentMethod()?.DeclaringType}::{MethodBase.GetCurrentMethod()?.Name}: " +
                   $"Finished Stich {_completedStiches.Count}");
 
         // clear the stiches table and the current stich
@@ -521,7 +519,7 @@ public class GameManager : NetworkBehaviour
     public void AddPlayer(Player player)
     {
         if (!IsServer) throw new InvalidOperationException(); // sanity check
-        Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
+        Debug.Log($"{MethodBase.GetCurrentMethod()?.DeclaringType}::{MethodBase.GetCurrentMethod()?.Name}: " +
                   $"adding Player {player.NetworkObjectId}");
         _players.Add(player);
         
@@ -543,7 +541,7 @@ public class GameManager : NetworkBehaviour
         var dealtCards = 0;
         foreach (var player in _players)
         {
-            Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
+            Debug.Log($"{MethodBase.GetCurrentMethod()?.DeclaringType}::{MethodBase.GetCurrentMethod()?.Name}: " +
                       $"Player {player.NetworkObjectId} should get cards {dealtCards} to {dealtCards + 7}");
             // this updates a SyncList on the player server object, which then notifies his respective client object
             for (var i = dealtCards; i < dealtCards + 8; i++) player.HandCards.Add(SyncListCardDeck[i]);
@@ -565,7 +563,7 @@ public class GameManager : NetworkBehaviour
         switch (changeEvent.Type)
         {
             case NetworkListEvent<PlayingCard.PlayingCardInfo>.EventType.Add:
-                Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
+                Debug.Log($"{MethodBase.GetCurrentMethod()?.DeclaringType}::{MethodBase.GetCurrentMethod()?.Name}: " +
                           $"the server notified me that {CurrentStich[i]} was played");
 
                 // play a random card sound
@@ -595,7 +593,7 @@ public class GameManager : NetworkBehaviour
 
     private void OnStichWinnerChanged(PlayingCard.PlayingCardInfo newStichWinner, PlayingCard.PlayingCardInfo newValue)
     {
-        Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
+        Debug.Log($"{MethodBase.GetCurrentMethod()?.DeclaringType}::{MethodBase.GetCurrentMethod()?.Name}: " +
                   $"Client {NetworkObjectId} was notified of Stich winner '{newStichWinner}'");
         Assert.IsTrue(CurrentStich.Count == 4);
 
@@ -626,7 +624,7 @@ public class GameManager : NetworkBehaviour
 
     private void OnGameStateTextChanged(FixedString64Bytes previousValue, FixedString64Bytes newValue)
     {
-        Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
+        Debug.Log($"{MethodBase.GetCurrentMethod()?.DeclaringType}::{MethodBase.GetCurrentMethod()?.Name}: " +
                   $"new text = \"{newValue}\"");
         // _gameStateText = newText;
         gameStateTextField.text = newValue.ToString();
@@ -641,9 +639,9 @@ public class GameManager : NetworkBehaviour
     }
 
     [ClientRpc]
-    private void UpdateAndShowScoreBoardClientRpc(FixedString32Bytes[] playerNames)
+    private void UpdateAndShowScoreBoardClientRpc(SerializableString[] playerNames)
     {
-        scoreboardDisplay.AddScoreBoardRow(playerNames, ScoreBoard[ScoreBoard.Count - 1]);
+        scoreboardDisplay.AddScoreBoardRow(playerNames, ScoreBoard[^1]);
         scoreboardDisplay.gameObject.SetActive(true);
     }
 

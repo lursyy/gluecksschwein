@@ -79,7 +79,7 @@ namespace Tests
                 GameManager.GetTrumpList(GameManager.RoundMode.FarbSolo, PlayingCard.Suit.Schelln));
 
             for (var i = 0; i < 6; i++)
-                expectedTrumps[i] = new PlayingCard.PlayingCardInfo(PlayingCard.Suit.Schelln, expectedTrumps[i].rank);
+                expectedTrumps[i] = new PlayingCard.PlayingCardInfo(PlayingCard.Suit.Schelln, expectedTrumps[i].Rank);
 
             Assert.AreEqual(expectedTrumps,
                 GameManager.GetTrumpList(GameManager.RoundMode.FarbSolo, PlayingCard.Suit.Schelln));
