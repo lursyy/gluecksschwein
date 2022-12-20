@@ -4,9 +4,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using TMPro;
+using Unity.Collections;
+using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.Assertions;
-using UnityEngine.Networking;
 using UnityEngine.UI;
 
 [RequireComponent(typeof(AudioSource))]
@@ -31,15 +32,15 @@ public class GameManager : NetworkBehaviour
     {
         Singleton = this;
         _cardDeck = PlayingCard.InitializeCardDeck();
-        _currentStich.Callback = OnStichCardsChanged;
+        _currentStich.OnListChanged += OnStichCardsChanged;
         _audioSource = GetComponent<AudioSource>();
-    }
 
-    public override void OnStartServer()
-    {
+        if (!IsServer) return;
         foreach (var cardInfo in _cardDeck) _syncListCardDeck.Add(cardInfo);
-
         EnterStateWaiting();
+
+        _gameStateText.OnValueChanged = OnGameStateTextChanged;
+        _currentStichWinner.OnValueChanged = OnStichWinnerChanged;
     }
 
     #region General
@@ -53,14 +54,14 @@ public class GameManager : NetworkBehaviour
         RoundFinished // We enter this state after the last "Stich". Here we can show/count scores
     }
 
-    [field: SyncVar] public GameState CurrentGameState { get; private set; }
-    [field: SyncVar] private RoundMode CurrentRoundMode { get; set; }
+    public NetworkVariable<GameState> CurrentGameState { get; private set; } = new NetworkVariable<GameState>();
+    private NetworkVariable<RoundMode> CurrentRoundMode { get; set; } = new NetworkVariable<RoundMode>();
 
     // private Dictionary<Player, PreRoundChoice> CurrentPreRoundChoices { get; } =
     //     new Dictionary<Player, PreRoundChoice>();
 
-    [SyncVar(hook = nameof(OnGameStateTextChanged))]
-    private string _gameStateText;
+    // TODO check if 32 bytes is enough
+    private NetworkVariable<FixedString32Bytes> _gameStateText = new NetworkVariable<FixedString32Bytes>();
 
     [Header("General")] [SerializeField] private TextMeshProUGUI gameStateTextField;
 
@@ -85,11 +86,8 @@ public class GameManager : NetworkBehaviour
 
     private List<PlayingCard.PlayingCardInfo> _cardDeck;
 
-    public class SyncListPlayingCard : SyncListStruct<PlayingCard.PlayingCardInfo>
-    {
-    }
-
-    private readonly SyncListPlayingCard _syncListCardDeck = new SyncListPlayingCard();
+    private readonly NetworkList<PlayingCard.PlayingCardInfo> _syncListCardDeck =
+        new NetworkList<PlayingCard.PlayingCardInfo>();
 
     #endregion
 
@@ -118,11 +116,7 @@ public class GameManager : NetworkBehaviour
     /// </summary>
     private List<List<Player>> _roundGroups = new List<List<Player>>();
 
-    private class SyncListScoreBoard : SyncListStruct<Extensions.ScoreBoardRow>
-    {
-    }
-
-    private readonly SyncListScoreBoard _scoreBoard = new SyncListScoreBoard();
+    private readonly NetworkList<Extensions.ScoreBoardRow> _scoreBoard = new NetworkList<Extensions.ScoreBoardRow>();
     [SerializeField] private ScoreboardDisplay scoreboardDisplay;
 
     /// <summary>
@@ -135,10 +129,11 @@ public class GameManager : NetworkBehaviour
 
     [SerializeField] private Image[] playedCardSlots = new Image[4];
 
-    private readonly SyncListPlayingCard _currentStich = new SyncListPlayingCard();
-
-    [SyncVar(hook = nameof(OnStichWinnerChanged))]
-    private PlayingCard.PlayingCardInfo _currentStichWinner;
+    private readonly NetworkList<PlayingCard.PlayingCardInfo> _currentStich =
+        new NetworkList<PlayingCard.PlayingCardInfo>();
+    
+    private readonly NetworkVariable<PlayingCard.PlayingCardInfo> _currentStichWinner =
+        new NetworkVariable<PlayingCard.PlayingCardInfo>();
 
     /// <summary>
     ///     Holds the 8 stiches of a round. Is cleared before the start of every round.
@@ -160,7 +155,7 @@ public class GameManager : NetworkBehaviour
     /// </summary>
     private void EnterStateWaiting()
     {
-        CurrentGameState = GameState.Waiting;
+        CurrentGameState.Value = GameState.Waiting;
     }
 
     /// <summary>
@@ -171,14 +166,14 @@ public class GameManager : NetworkBehaviour
     private void EnterStateGameRunning()
     {
         // check previous game state
-        if (CurrentGameState == GameState.Waiting)
+        if (CurrentGameState.Value == GameState.Waiting)
             // set starting player to the last one so that before the first round the player 0 gets selected
             _roundStartingPlayer = _players[3];
 
         // update the game state
-        CurrentGameState = GameState.GameRunning;
+        CurrentGameState.Value = GameState.GameRunning;
 
-        _gameStateText = "Bereit zum spielen";
+        _gameStateText.Value = "Bereit zum spielen";
         dealCardsButton.gameObject.SetActive(true);
         dealCardsButton.onClick.AddListener(EnterStatePreRound);
     }
@@ -191,10 +186,10 @@ public class GameManager : NetworkBehaviour
     /// </summary>
     private void EnterStatePreRound()
     {
-        RpcHideScoreBoard();
+        HideScoreBoardClientRpc();
 
-        CurrentGameState = GameState.PreRound;
-        _gameStateText = "Runde vorbereiten...";
+        CurrentGameState.Value = GameState.PreRound;
+        _gameStateText.Value = "Runde vorbereiten...";
 
         DealCards();
 
@@ -206,10 +201,10 @@ public class GameManager : NetworkBehaviour
 
         // We want to use Ramsch as the initial mode:
         // If everyone selects "Weiter", Ramsch is the correct round mode and we won't have to do anything
-        CurrentRoundMode = RoundMode.Ramsch;
+        CurrentRoundMode.Value = RoundMode.Ramsch;
 
         // Display the Pre Round Buttons for the currently deciding player
-        _currentTurnPlayer.RpcDisplayPreRoundButtons(CurrentRoundMode);
+        _currentTurnPlayer.RpcDisplayPreRoundButtons(CurrentRoundMode.Value);
     }
 
     /// <summary>
@@ -220,12 +215,12 @@ public class GameManager : NetworkBehaviour
         Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
                   $"entering round with {nameof(CurrentRoundMode)}={CurrentRoundMode}.");
 
-        CurrentGameState = GameState.Round;
+        CurrentGameState.Value = GameState.Round;
         _currentTurnPlayer = _roundStartingPlayer;
         _completedStiches.Clear();
 
         // find out who is playing with whom, for easy scoring later
-        _roundGroups = CalculateRoundGroups(_players, CurrentPreRoundWinner, CurrentRoundMode, CurrentRoundSuit);
+        _roundGroups = CalculateRoundGroups(_players, CurrentPreRoundWinner, CurrentRoundMode.Value, CurrentRoundSuit);
 
         StartStich();
     }
@@ -238,7 +233,7 @@ public class GameManager : NetworkBehaviour
     /// </summary>
     private void EnterStateRoundFinished()
     {
-        CurrentGameState = GameState.RoundFinished;
+        CurrentGameState.Value = GameState.RoundFinished;
         Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
                   "Round finished!");
 
@@ -246,20 +241,18 @@ public class GameManager : NetworkBehaviour
 
         UpdateScoreBoard();
 
-        _gameStateText = $"Runde {_scoreBoard.Count} beendet";
+        _gameStateText.Value = $"Runde {_scoreBoard.Count} beendet";
 
         var playerNames = _players.Select(player => player.PlayerName).ToArray();
-        RpcUpdateAndShowScoreBoard(playerNames);
+        UpdateAndShowScoreBoardClientRpc(playerNames);
 
         dealCardsButton.gameObject.SetActive(true);
     }
 
-    [Server]
     private void UpdateScoreBoard()
     {
         // TODO maybe use a cumulative score, i.e. add the last row to this new row
-
-        var roundScore = new Extensions.ScoreBoardRow();
+        var roundScores = _players.ToDictionary(player => player.PlayerName, player => 0);
 
         foreach (var player in _players)
         {
@@ -269,18 +262,25 @@ public class GameManager : NetworkBehaviour
 
             // add the player's round score to each member of their group, including themselves
             foreach (var groupPlayer in _roundGroups.Find(group => group.Contains(player)))
-                roundScore.AddEntry(groupPlayer.PlayerName, playerRoundScore);
+                roundScores[groupPlayer.PlayerName] += playerRoundScore;
         }
 
-        _scoreBoard.Add(roundScore);
+        var entries = new Extensions.ScoreBoardEntry[4];
+        for (int i = 0; i < entries.Length; i++)
+        {
+            var score = roundScores.ToArray()[i];
+            entries[i] = new Extensions.ScoreBoardEntry(score.Key, score.Value);
+        }
+
+        _scoreBoard.Add(new Extensions.ScoreBoardRow(entries));
     }
 
     #endregion
 
     #region Server Stuff / Commands
 
-    [Command]
-    public void CmdHandlePreRoundChoice(NetworkInstanceId playerId, RoundMode playerChoiceRoundMode,
+    [ServerRpc]
+    public void HandlePreRoundChoiceServerRpc(ulong playerId, RoundMode playerChoiceRoundMode,
         PlayingCard.Suit playerChoiceRoundSuit)
     {
         Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
@@ -293,8 +293,8 @@ public class GameManager : NetworkBehaviour
         // BUT... this does not apply for "Weiter": if the player chose "Weiter", we don't change the round mode
         if (playerChoiceRoundMode != RoundMode.Ramsch)
         {
-            CurrentPreRoundWinner = _players.Find(player => player.netId == playerId);
-            CurrentRoundMode = playerChoiceRoundMode;
+            CurrentPreRoundWinner = _players.Find(player => player.NetworkObjectId == playerId);
+            CurrentRoundMode.Value = playerChoiceRoundMode;
             CurrentRoundSuit = playerChoiceRoundSuit;
         }
 
@@ -315,7 +315,7 @@ public class GameManager : NetworkBehaviour
         {
             // otherwise display buttons to the next player
             _currentTurnPlayer = _players.CycleNext(_currentTurnPlayer);
-            _currentTurnPlayer.RpcDisplayPreRoundButtons(CurrentRoundMode);
+            _currentTurnPlayer.RpcDisplayPreRoundButtons(CurrentRoundMode.Value);
         }
     }
 
@@ -428,8 +428,8 @@ public class GameManager : NetworkBehaviour
         return roundGroups;
     }
 
-    [Command]
-    public void CmdHandlePlayCard(PlayingCard.PlayingCardInfo cardInfo)
+    [ServerRpc]
+    public void HandlePlayCardServerRpc(PlayingCard.PlayingCardInfo cardInfo)
     {
         Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
                   $"someone wants me (the server) to play {cardInfo}");
@@ -447,25 +447,27 @@ public class GameManager : NetworkBehaviour
         {
             // initiate the next player's turn
             _currentTurnPlayer = _players.CycleNext(_currentTurnPlayer);
-            _gameStateText = $"Runde läuft ({CurrentRoundMode})\n{_currentTurnPlayer.PlayerName} ist dran";
+            _gameStateText.Value = $"Runde läuft ({CurrentRoundMode})\n{_currentTurnPlayer.PlayerName} ist dran";
             _currentTurnPlayer.RpcStartTurn();
         }
     }
 
-    [Server]
     private void OnStichCompleted()
     {
         var currentStichStruct = new PlayingCard.Stich();
-        currentStichStruct.AddAll(_currentStich.ToArray());
+        foreach (PlayingCard.PlayingCardInfo cardInfo in _currentStich)
+        {
+            currentStichStruct.AddCard(cardInfo);
+        }
 
         // determine who won the stich
-        _currentStichWinner = currentStichStruct.CalculateWinningCard(CurrentRoundMode, CurrentRoundSuit);
+        _currentStichWinner.Value = currentStichStruct.CalculateWinningCard(CurrentRoundMode.Value, CurrentRoundSuit);
         Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
-                  $"Server {netId} setting Stich Winner = {_currentStichWinner}");
-        var winningPlayer = _players.Cycle(_currentTurnPlayer, _currentStich.IndexOf(_currentStichWinner) + 1);
+                  $"Server {NetworkObjectId} setting Stich Winner = {_currentStichWinner}");
+        var winningPlayer = _players.Cycle(_currentTurnPlayer, _currentStich.IndexOf(_currentStichWinner.Value) + 1);
 
         // let the players know
-        _gameStateText = $"{winningPlayer.PlayerName} gewinnt mit {_currentStichWinner}...";
+        _gameStateText.Value = $"{winningPlayer.PlayerName} gewinnt mit {_currentStichWinner}...";
 
         // add the stich to the completed stiches
         _completedStiches[currentStichStruct] = winningPlayer;
@@ -477,7 +479,6 @@ public class GameManager : NetworkBehaviour
         StartCoroutine(StartNextStichWithDelay(secondsPauseAfterStich));
     }
 
-    [Server]
     private IEnumerator StartNextStichWithDelay(int seconds)
     {
         // wait for the specified amount of time
@@ -496,22 +497,22 @@ public class GameManager : NetworkBehaviour
             StartStich();
     }
 
-    [Server]
     private void StartStich()
     {
+        if (!IsServer) throw new InvalidOperationException(); // sanity check
         // notify the current player that it's their turn
         _currentTurnPlayer.RpcStartTurn();
-        _gameStateText = $"Runde läuft ({CurrentRoundMode})\n{_currentTurnPlayer.PlayerName} ist dran";
+        _gameStateText.Value = $"Runde läuft ({CurrentRoundMode})\n{_currentTurnPlayer.PlayerName} ist dran";
     }
 
-    [Server]
     public void AddPlayer(Player player)
     {
+        if (!IsServer) throw new InvalidOperationException(); // sanity check
         Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
-                  $"adding Player {player.netId}");
+                  $"adding Player {player.NetworkObjectId}");
         _players.Add(player);
 
-        _gameStateText = $"Warte auf {4 - _players.Count} Spieler... ";
+        _gameStateText.Value = $"Warte auf {4 - _players.Count} Spieler... ";
 
         if (_players.Count == 4) EnterStateGameRunning();
     }
@@ -520,16 +521,16 @@ public class GameManager : NetworkBehaviour
     ///     Gives out the cards from the deck:
     ///     card 00-07 to player 1, card 08-15 to player 2, card 16-23 to player 3, card 24-31 to player 4
     /// </summary>
-    [Server]
     private void DealCards()
     {
+        if (!IsServer) throw new InvalidOperationException(); // sanity check
         _syncListCardDeck.Shuffle();
 
         var dealtCards = 0;
         foreach (var player in _players)
         {
             Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
-                      $"Player {player.netId} should get cards {dealtCards} to {dealtCards + 7}");
+                      $"Player {player.NetworkObjectId} should get cards {dealtCards} to {dealtCards + 7}");
             // this updates a SyncList on the player server object, which then notifies his respective client object
             for (var i = dealtCards; i < dealtCards + 8; i++) player.handCards.Add(_syncListCardDeck[i]);
 
@@ -537,18 +538,19 @@ public class GameManager : NetworkBehaviour
         }
 
         // the following has to happen on (all) the clients, hence the RPC
-        RpcOnDealCards();
+        OnDealCardsClientRpc();
     }
 
     #endregion
 
     #region SyncVar Callbacks/Hooks (Client)
 
-    private void OnStichCardsChanged(SyncList<PlayingCard.PlayingCardInfo>.Operation op, int i)
+    private void OnStichCardsChanged(NetworkListEvent<PlayingCard.PlayingCardInfo> changeEvent)
     {
-        switch (op)
+        int i = changeEvent.Index;
+        switch (changeEvent.Type)
         {
-            case SyncList<PlayingCard.PlayingCardInfo>.Operation.OP_ADD:
+            case NetworkListEvent<PlayingCard.PlayingCardInfo>.EventType.Add:
                 Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
                           $"the server notified me that {_currentStich[i]} was played");
 
@@ -561,7 +563,7 @@ public class GameManager : NetworkBehaviour
                 playedCardSlots[i].gameObject.SetActive(true);
                 playedCardSlots[i].sprite = PlayingCard.SpriteDict[_currentStich[i]];
                 break;
-            case SyncList<PlayingCard.PlayingCardInfo>.Operation.OP_CLEAR:
+            case NetworkListEvent<PlayingCard.PlayingCardInfo>.EventType.Clear:
                 foreach (var cardSlot in playedCardSlots)
                 {
                     cardSlot.gameObject.SetActive(false);
@@ -573,14 +575,14 @@ public class GameManager : NetworkBehaviour
 
                 break;
             default:
-                throw new InvalidOperationException($"{nameof(op)}={op}");
+                throw new InvalidOperationException($"changeEvent={changeEvent.Type}");
         }
     }
 
-    private void OnStichWinnerChanged(PlayingCard.PlayingCardInfo newStichWinner)
+    private void OnStichWinnerChanged(PlayingCard.PlayingCardInfo newStichWinner, PlayingCard.PlayingCardInfo newValue)
     {
         Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
-                  $"Client {netId} was notified of Stich winner '{newStichWinner}'");
+                  $"Client {NetworkObjectId} was notified of Stich winner '{newStichWinner}'");
         Assert.IsTrue(_currentStich.Count == 4);
 
         var i = _currentStich.IndexOf(newStichWinner);
@@ -608,16 +610,16 @@ public class GameManager : NetworkBehaviour
         winnerImage.rectTransform.localScale = Vector3.one * 1.2f;
     }
 
-    private void OnGameStateTextChanged(string newText)
+    private void OnGameStateTextChanged(FixedString32Bytes previousValue, FixedString32Bytes newValue)
     {
         Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
-                  $"new text = \"{_gameStateText}\"");
-        _gameStateText = newText;
-        gameStateTextField.text = _gameStateText;
+                  $"new text = \"{newValue}\"");
+        // _gameStateText = newText;
+        gameStateTextField.text = newValue.ToString();
     }
 
     [ClientRpc]
-    private void RpcOnDealCards()
+    private void OnDealCardsClientRpc()
     {
         // play the shuffle sound
         _audioSource.clip = soundShuffle;
@@ -625,14 +627,14 @@ public class GameManager : NetworkBehaviour
     }
 
     [ClientRpc]
-    private void RpcUpdateAndShowScoreBoard(string[] playerNames)
+    private void UpdateAndShowScoreBoardClientRpc(string[] playerNames)
     {
-        scoreboardDisplay.AddScoreBoardRow(playerNames, _scoreBoard.Last());
+        scoreboardDisplay.AddScoreBoardRow(playerNames, _scoreBoard[_scoreBoard.Count-1]);
         scoreboardDisplay.gameObject.SetActive(true);
     }
 
     [ClientRpc]
-    private void RpcHideScoreBoard()
+    private void HideScoreBoardClientRpc()
     {
         scoreboardDisplay.gameObject.SetActive(false);
     }

@@ -1,11 +1,9 @@
 using System.Collections.Generic;
 using TMPro;
+using Unity.Netcode;
 using UnityEngine;
-using UnityEngine.Networking;
 using UnityEngine.Networking.Match;
 using UnityEngine.UI;
-
-#pragma warning disable 618
 
 [RequireComponent(typeof(NetworkManager))]
 // ReSharper disable once InconsistentNaming

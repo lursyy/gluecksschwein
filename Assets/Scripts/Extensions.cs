@@ -1,12 +1,27 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
+using Unity.Collections;
+using Unity.Netcode;
 using UnityEngine.Assertions;
 using Card = PlayingCard.PlayingCardInfo;
 
 public static class Extensions
 {
     private static readonly Random Rng = new Random();
+
+    // TODO duplicate code...
+    public static void Shuffle<T>(this NetworkList<T> list) where T : unmanaged, IEquatable<T>
+    {
+        var n = list.Count;
+        while (n > 1)
+        {
+            n--;
+            var k = Rng.Next(n + 1);
+            (list[k], list[n]) = (list[n], list[k]);
+        }
+    }
 
     public static void Shuffle<T>(this IList<T> list)
     {
@@ -15,9 +30,7 @@ public static class Extensions
         {
             n--;
             var k = Rng.Next(n + 1);
-            var value = list[k];
-            list[k] = list[n];
-            list[n] = value;
+            (list[k], list[n]) = (list[n], list[k]);
         }
     }
 
@@ -90,50 +103,46 @@ public static class Extensions
         return bottomCardPrecedence > topCardPrecedence ? bottomCard : topCard;
     }
 
-    public struct ScoreBoardRow
+    [StructLayout(LayoutKind.Sequential)]
+    public struct ScoreBoardRow : IEquatable<ScoreBoardRow>
     {
-        public int EntryCount { get; private set; }
+        // TODO this can't be right... how can I use an array here?
+        private ScoreBoardEntry entry1;
+        private ScoreBoardEntry entry2;
+        private ScoreBoardEntry entry3;
+        private ScoreBoardEntry entry4;
 
-        public ScoreBoardEntry[] entries;
-
-        public void AddEntry(string name, int score)
+        public ScoreBoardEntry[] Entries
         {
-            if (entries == null) entries = new ScoreBoardEntry[4];
-
-            var existingEntry = entries.Take(EntryCount).ToList().Find(entry => entry.name.Equals(name));
-
-            // we have to do a separate check for the name because we cannot do a null check on a struct
-            var nameExists = existingEntry.name != null && existingEntry.name.Equals(name);
-
-            if (nameExists)
-            {
-                // add score to the existing entry (existingEntry is just a copy, apparently) 
-                var entryIndex = Array.IndexOf(entries, existingEntry);
-                entries[entryIndex].score += score;
-            }
-            else if (EntryCount == 4)
-            {
-                throw new InvalidOperationException("Already 4 distinct names in this row");
-            }
-            else // we have space for adding the new name
-            {
-                entries[EntryCount] = new ScoreBoardEntry(name, score);
-                EntryCount++;
-            }
+            get { return new[] { entry1, entry2, entry3, entry4 }; }
         }
 
-        public override string ToString()
+        public ScoreBoardRow(IReadOnlyList<ScoreBoardEntry> entries)
         {
-            return string.Join(" | ", entries.Take(EntryCount));
+            if (entries.Count != 4) throw new InvalidOperationException("Expecting 4 entries");
+            entry1 = entries[1];
+            entry2 = entries[2];
+            entry3 = entries[3];
+            entry4 = entries[4];
+        }
+
+        public bool Equals(ScoreBoardRow other)
+        {
+            return entry1.Equals(other.entry1) &&
+                   entry2.Equals(other.entry2) &&
+                   entry3.Equals(other.entry3) &&
+                   entry4.Equals(other.entry4);
         }
     }
 
-    public struct ScoreBoardEntry
+    [StructLayout(LayoutKind.Sequential)]
+    public struct ScoreBoardEntry : IEquatable<ScoreBoardEntry>
     {
-        public readonly string name;
+        // TODO check if 32 bytes is enough
+        public readonly FixedString32Bytes name;
         public int score;
 
-        internal ScoreBoardEntry(string name, int score)
+        internal ScoreBoardEntry(String name, int score)
         {
             this.name = name;
             this.score = score;
@@ -142,6 +151,24 @@ public static class Extensions
         public override string ToString()
         {
             return $"{name}:{score}";
+        }
+
+        public bool Equals(ScoreBoardEntry other)
+        {
+            return name.Equals(other.name) && score == other.score;
+        }
+
+        public override bool Equals(object obj)
+        {
+            return obj is ScoreBoardEntry other && Equals(other);
+        }
+
+        public override int GetHashCode()
+        {
+            unchecked
+            {
+                return (name.GetHashCode() * 397) ^ score;
+            }
         }
     }
 }

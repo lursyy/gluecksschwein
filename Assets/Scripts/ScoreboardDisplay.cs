@@ -27,7 +27,7 @@ public class ScoreboardDisplay : MonoBehaviour
         var scoresInCorrectOrder = new List<int>();
         foreach (var playerName in playerNames) // the LINQ expression suggested by Rider is too wild for me
         {
-            var playerEntry = rowToAdd.entries.ToList()
+            var playerEntry = rowToAdd.Entries.ToList()
                 .Find(entry => entry.name.Equals(playerName));
             scoresInCorrectOrder.Add(playerEntry.score);
         }

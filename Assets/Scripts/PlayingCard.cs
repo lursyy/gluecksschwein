@@ -55,7 +55,7 @@ public static class PlayingCard
     #region Playing Card Definition
 
     // use struct for easy serialization in SyncList
-    public readonly struct PlayingCardInfo
+    public readonly struct PlayingCardInfo : IEquatable<PlayingCardInfo>
     {
         public readonly Suit suit;
         public readonly Rank rank;
@@ -79,18 +79,21 @@ public static class PlayingCard
             return $"{suit} {rank}";
         }
 
-        public override bool Equals(object otherObj)
+        public bool Equals(PlayingCardInfo other)
         {
-            if (otherObj is PlayingCardInfo other) return suit == other.suit && rank == other.rank;
+            return suit == other.suit && rank == other.rank;
+        }
 
-            return base.Equals(otherObj);
+        public override bool Equals(object obj)
+        {
+            return obj is PlayingCardInfo other && Equals(other);
         }
 
         public override int GetHashCode()
         {
             unchecked
             {
-                return ((int) suit * 397) ^ (int) rank;
+                return ((int)suit * 397) ^ (int)rank;
             }
         }
 
