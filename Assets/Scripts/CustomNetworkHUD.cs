@@ -28,6 +28,8 @@ public class CustomNetworkHUD : MonoBehaviour
 
     private void Awake()
     {
+        lobbyPanel.SetActive(true);
+        
         _manager = GetComponent<NetworkManager>();
         _manager.StartMatchMaker();
         
@@ -61,7 +63,7 @@ public class CustomNetworkHUD : MonoBehaviour
         lobbyPanel.SetActive(false);
     }
 
-    public void JoinMatch(MatchInfoSnapshot matchInfo)
+    private void JoinMatch(MatchInfoSnapshot matchInfo)
     {
         if (_manager.matchMaker == null)
         {
