@@ -32,7 +32,11 @@ public class Player : NetworkBehaviour
                   $"I am player {netId} on the local player");
         // GameManager.Singleton.localPlayer = this;
         _handButtons = GameManager.Singleton.localPlayerCardButtons;
-        
+
+        _handButtons.ForEach(button =>
+            button.onClick.AddListener(() => OnClickCardButton(_handButtons.IndexOf(button)))
+        ); 
+
         // set default name
         // (this is not reflected for the gameObject names on the clients)
         CmdSetUserName($"Spieler {netId}");
@@ -205,8 +209,6 @@ public class Player : NetworkBehaviour
             Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
                       $"Player {netId} was notified of a change in his hand: card {index}: {handCards[index]}");
             _handButtons[index].image.sprite = PlayingCard.SpriteDict[handCards[index]];
-            _handButtons[index].onClick.RemoveAllListeners();
-            _handButtons[index].onClick.AddListener(() => OnClickCardButton(index));
         }
     }
 
@@ -216,6 +218,9 @@ public class Player : NetworkBehaviour
         // disable the button GameObject so we cannot play the card again
         _handButtons[index].gameObject.SetActive(false);
 
+        // make ALL the buttons non-interactable because the player has had their turn
+        _handButtons.ForEach(button => button.interactable = false);
+        
         // tell the server to play the card
         CmdPlayCard(handCards[index]);
     }
@@ -249,17 +254,6 @@ public class Player : NetworkBehaviour
         _handButtons.ForEach(button => button.interactable = true);
     }
     
-    /// <summary>
-    /// disables the player's hand cards
-    /// </summary>
-    public void RpcEndTurn()
-    {
-        if (!isLocalPlayer) { return; }
-        
-        // disable the card buttons
-        _handButtons.ForEach(button => button.interactable = false);
-    }
-
     #endregion
     
 }

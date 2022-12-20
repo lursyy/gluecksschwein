@@ -231,6 +231,11 @@ MonoBehaviour:
   preRoundSoloButton: {fileID: 1330755733}
   preRoundWenzButton: {fileID: 1623881132}
   preRoundWeiterButton: {fileID: 351045000}
+  playedCardSlots:
+  - {fileID: 822712271159058149}
+  - {fileID: 822712272340348398}
+  - {fileID: 822712271028345407}
+  - {fileID: 822712271245396855}
 --- !u!114 &97815955
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2267,7 +2272,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   offsetX: 0
-  offsetY: 0
+  offsetY: -10
 --- !u!114 &1490328364
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3206,16 +3211,6 @@ PrefabInstance:
         type: 3}
       propertyPath: m_Name
       value: PlayingCard1
-      objectReference: {fileID: 0}
-    - target: {fileID: 822712271965276836, guid: c925273d6f80bc948850aaa0a165c99f,
-        type: 3}
-      propertyPath: m_IsActive
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 822712271965276838, guid: c925273d6f80bc948850aaa0a165c99f,
-        type: 3}
-      propertyPath: m_Interactable
-      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 822712271965276839, guid: c925273d6f80bc948850aaa0a165c99f,
         type: 3}
