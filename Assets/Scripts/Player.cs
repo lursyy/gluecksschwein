@@ -1,11 +1,12 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Events;
 using UnityEngine.Networking;
 using UnityEngine.UI;
 
 public class Player : NetworkBehaviour
 {
-    public GameManager.SyncListCardDeck handCards = new GameManager.SyncListCardDeck();
+    public GameManager.SyncListPlayingCard handCards = new GameManager.SyncListPlayingCard();
     private List<Button> _handButtons;
 
     public string playerName;
@@ -43,7 +44,16 @@ public class Player : NetworkBehaviour
         {
             Debug.Log($"(Local) Player {netId} was notified of a change in his hand: card {index}: {handCards[index]}");
             _handButtons[index].image.sprite = PlayingCard.SpriteDict[handCards[index]];
+            _handButtons[index].onClick.RemoveAllListeners();
+            _handButtons[index].onClick.AddListener(() => CmdPlayCard(handCards[index]));
         }
+    }
+
+    [Command]
+    private void CmdPlayCard(PlayingCard.PlayingCardInfo handCard)
+    {
+        Debug.Log($"Player::CmdPlayCard: sending card {handCard} to the GameManager");
+        GameManager.Singleton.CmdPlayCard(handCard);
     }
 
     // public void UpdateButtons()

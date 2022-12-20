@@ -11,15 +11,10 @@ public class GameManager : NetworkBehaviour
     public Button dealCardsButton;
 
     private List<PlayingCard.PlayingCardInfo> _cardDeck;
-    public class SyncListCardDeck : SyncListStruct<PlayingCard.PlayingCardInfo>
-    {
-    }
-    public SyncListCardDeck syncListCardDeck = new SyncListCardDeck();
-    
+    public class SyncListPlayingCard : SyncListStruct<PlayingCard.PlayingCardInfo> { }
+    public SyncListPlayingCard syncListCardDeck = new SyncListPlayingCard();
     public List<GameObject> playedCardSlots;
-
-    // public class PlayingCardSyncList : SyncListStruct<PlayingCard.PlayingCardInfo> { }
-    public List<PlayingCard.PlayingCardInfo> playedCards = new List<PlayingCard.PlayingCardInfo>();
+    public SyncListPlayingCard playedCards = new SyncListPlayingCard();
 
     // private List<Player> _players;
 
@@ -29,6 +24,7 @@ public class GameManager : NetworkBehaviour
         Singleton = this;
         //cardDeck.Callback = (op, index) => Debug.Log($"cardDeck changed at index {index} on netId {netId}");
         _cardDeck = PlayingCard.InitializeCardDeck();
+        playedCards.Callback = Callback;
     }
 
     public override void OnStartServer()
@@ -40,34 +36,31 @@ public class GameManager : NetworkBehaviour
         
         dealCardsButton.onClick.AddListener(DealCards);
         dealCardsButton.gameObject.SetActive(true);
+        // playedCards.Callback = delegate(SyncList<PlayingCard.PlayingCardInfo>.Operation op, int index)
+        // {
+        //     Debug.Log($"playedCards Callback: {playedCards[index]} was played");
+        //     playedCardSlots[playedCards.Count-1].GetComponent<Image>().sprite = PlayingCard.SpriteDict[playedCards[index]];
+        // };
     }
 
-    // private void Shuffle()
-    // {
-    //     cardDeck.Shuffle();
-    // }
+    [Command]
+    public void CmdPlayCard(PlayingCard.PlayingCardInfo cardInfo)
+    {
+        Debug.Log($"GameManager::CmdPlayCard: someone wants me (the server) to play {cardInfo}");
+    
+        // add the card to the played cards
+        playedCards.Add(cardInfo);
+    }
+    
+    private void Callback(SyncList<PlayingCard.PlayingCardInfo>.Operation op, int i)
+    {
+        Debug.Log($"GameManager::RpcPlayCard: the server notified me that {playedCards[i]} was played");
 
-    // [Command]
-    // void CmdPlayCard(PlayingCard.PlayingCardInfo cardInfo)
-    // {
-    //     Debug.Log($"GameManager::CmdPlayCard: someone wants me (the server) to play {cardInfo}");
-    //
-    //     // add the card to the played cards
-    //     playedCards.Add(cardInfo);
-    //
-    //     // put the correct image in the position of the just played card
-    //     playedCardSlots[playedCards.IndexOf(cardInfo)].GetComponent<Image>().sprite = PlayingCard.SpriteDict[cardInfo];
-    //
-    //     RpcPlayCard(cardInfo);
-    // }
-    //
-    // [ClientRpc]
-    // void RpcPlayCard(PlayingCard.PlayingCardInfo cardInfo)
-    // {
-    //     Debug.Log($"GameManager::RpcPlayCard: the server notified me of a new played card: {cardInfo}");
-    //     playedCards.Add(cardInfo);
-    //     playedCardSlots[playedCards.IndexOf(cardInfo)].GetComponent<Image>().sprite = PlayingCard.SpriteDict[cardInfo];
-    // }
+        // put the correct image in the position of the just played card
+        playedCardSlots[i].SetActive(true);
+        playedCardSlots[i].GetComponent<Image>().sprite = PlayingCard.SpriteDict[playedCards[i]];
+
+    }
 
     [Server]
     public void AddPlayer(Player player)

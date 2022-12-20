@@ -37,58 +37,22 @@ public class CustomNetworkHUD : MonoBehaviour
 
         bool noConnection = (_manager.client == null || _manager.client.connection == null ||
                              _manager.client.connection.connectionId == -1);
-
-        if (!_manager.IsClientConnected() && !NetworkServer.active && _manager.matchMaker == null)
+        
+        if (NetworkServer.active)
         {
-            if (noConnection)
-            {
-                if (GUI.Button(new Rect(xpos, ypos, 200, 20), "LAN Host(H)"))
-                {
-                    _manager.StartHost();
-                }
-                
-                ypos += spacing;
-            
+            string serverMsg = $"Server running on {NetworkManager.singleton.matchInfo.address}";
 
-                if (GUI.Button(new Rect(xpos, ypos, 105, 20), "LAN Client(C)"))
-                {
-                    _manager.StartClient();
-                }
-
-                _manager.networkAddress = GUI.TextField(new Rect(xpos + 100, ypos, 95, 20), _manager.networkAddress);
-                ypos += spacing;
-            }
-            else
-            {
-                GUI.Label(new Rect(xpos, ypos, 200, 20),
-                    "Connecting to " + _manager.networkAddress + ":" + _manager.networkPort + "..");
-                ypos += spacing;
-
-
-                if (GUI.Button(new Rect(xpos, ypos, 200, 20), "Cancel Connection Attempt"))
-                {
-                    _manager.StopClient();
-                }
-            }
-        }
-        else
-        {
-            if (NetworkServer.active)
-            {
-                string serverMsg = $"Server running on {NetworkManager.singleton.matchInfo.address}";
-
-                GUI.Label(new Rect(xpos, ypos, 300, 20), serverMsg);
-                ypos += spacing;
-            }
-
-            if (_manager.IsClientConnected())
-            {
-                GUI.Label(new Rect(xpos, ypos, 300, 20),
-                    $"Client connected to {NetworkManager.singleton.matchInfo.address}");
-                ypos += spacing;
-            }
+            GUI.Label(new Rect(xpos, ypos, 300, 20), serverMsg);
+            ypos += spacing;
         }
 
+        if (_manager.IsClientConnected())
+        {
+            GUI.Label(new Rect(xpos, ypos, 300, 20),
+                $"Client connected to {NetworkManager.singleton.matchInfo.address}");
+            ypos += spacing;
+        }
+        
         if (_manager.IsClientConnected() && !ClientScene.ready)
         {
             if (GUI.Button(new Rect(xpos, ypos, 200, 20), "Client Ready"))
