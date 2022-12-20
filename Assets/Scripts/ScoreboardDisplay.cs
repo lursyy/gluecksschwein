@@ -10,28 +10,39 @@ public class ScoreboardDisplay : MonoBehaviour
     public Transform scoreboardContent;
     public List<Text> playerNameTextFields;
     public ScoreboardRowDisplay rowTemplate;
-
-    public void AddScoreBoardRow(SerializableString[] playerNames, Extensions.ScoreBoardRow rowToAdd)
+    private readonly List<string> orderedPlayerNames = new(); // to keep track of the player names in order
+    
+    public void AddScoreBoardRow(Extensions.ScoreBoardRow rowToAdd)
     {
-        // display the player names
-        for (var i = 0; i < playerNames.Length; i++) playerNameTextFields[i].text = playerNames[i].value;
+        if (orderedPlayerNames.Count == 0)
+        {
+            // first call: remember the order in which we see the player names...
+            orderedPlayerNames.AddRange(rowToAdd.Entries.Select(e => e.name.Value));
+            
+            // ...and set the headings accordingly
+            for (var i = 0; i < orderedPlayerNames.Count; i++)
+            {
+                playerNameTextFields[i].text = orderedPlayerNames[i];
+            }
+        }
 
-        AddScoresAtCorrectName(playerNames, rowToAdd);
+        // every call: add the row of scores
+        AddScoresAtCorrectName(rowToAdd);
     }
 
     /// <summary>
     ///     Fills the Score Board UI with the entries, ensuring that each entry is displayed under the correct player
     ///     (The order of the ScoreBoardRow is independent from the playerNames in the UI)
     /// </summary>
-    private void AddScoresAtCorrectName(IEnumerable<SerializableString> playerNames, Extensions.ScoreBoardRow rowToAdd)
+    private void AddScoresAtCorrectName(Extensions.ScoreBoardRow rowToAdd)
     {
         // create a new List of scores which will have the correct order
         var scoresInCorrectOrder = new List<int>();
-        foreach (var playerName in playerNames) // the LINQ expression suggested by Rider is too wild for me
+        foreach (var playerName in orderedPlayerNames) // the LINQ expression suggested by Rider is too wild for me
         {
-            var playerEntry = rowToAdd.Entries.ToList()
-                .Find(entry => entry.Name == playerName.value);
-            scoresInCorrectOrder.Add(playerEntry.Score);
+            var playerScore = rowToAdd.Entries.ToDictionary(entry => entry.name)
+                [playerName].score;
+            scoresInCorrectOrder.Add(playerScore);
         }
 
         var rowDisplay = Instantiate(rowTemplate, scoreboardContent);

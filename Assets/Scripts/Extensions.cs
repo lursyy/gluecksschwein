@@ -119,10 +119,10 @@ public static class Extensions
         public ScoreBoardRow(IReadOnlyList<ScoreBoardEntry> entries)
         {
             if (entries.Count != 4) throw new InvalidOperationException("Expecting 4 entries");
-            entry1 = entries[1];
-            entry2 = entries[2];
-            entry3 = entries[3];
-            entry4 = entries[4];
+            entry1 = entries[0];
+            entry2 = entries[1];
+            entry3 = entries[2];
+            entry4 = entries[3];
         }
 
         public bool Equals(ScoreBoardRow other)
@@ -132,7 +132,7 @@ public static class Extensions
                    entry3.Equals(other.entry3) &&
                    entry4.Equals(other.entry4);
         }
-
+        
         public void NetworkSerialize<T>(BufferSerializer<T> serializer) where T : IReaderWriter
         {
             serializer.SerializeValue(ref entry1);
@@ -146,33 +146,29 @@ public static class Extensions
     public struct ScoreBoardEntry : INetworkSerializable, IEquatable<ScoreBoardEntry>
     {
         // TODO check if 32 bytes is enough
-        public FixedString32Bytes Name => _name;
+        public FixedString32Bytes name;
+        public int score;
 
-        public int Score => _score;
-
-        private FixedString32Bytes _name;
-        private int _score;
-
-        public ScoreBoardEntry(FixedString32Bytes name, int score)
+        public ScoreBoardEntry(string name, int score)
         {
-            _name = name;
-            _score = score;
+            this.name = name;
+            this.score = score;
         }
 
         public override string ToString()
         {
-            return $"{Name.Value}:{Score}";
+            return $"{name}:{score}";
         }
 
         public void NetworkSerialize<T>(BufferSerializer<T> serializer) where T : IReaderWriter
         {
-            serializer.SerializeValue(ref _name);
-            serializer.SerializeValue(ref _score);
+            serializer.SerializeValue(ref name);
+            serializer.SerializeValue(ref score);
         }
 
         public bool Equals(ScoreBoardEntry other)
         {
-            return Name.Equals(other.Name) && Score == other.Score;
+            return name.Equals(other.name) && score == other.score;
         }
 
         public override bool Equals(object obj)
@@ -184,7 +180,7 @@ public static class Extensions
         {
             unchecked
             {
-                return (Name.GetHashCode() * 397) ^ Score;
+                return (name.GetHashCode() * 397) ^ score;
             }
         }
     }

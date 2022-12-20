@@ -35,6 +35,7 @@ public class GameManager : NetworkBehaviour
         ScoreBoard = new NetworkList<Extensions.ScoreBoardRow>();
         CurrentStich = new NetworkList<PlayingCard.PlayingCardInfo>();
         CurrentStich.OnListChanged += OnStichCardsChanged;
+        ScoreBoard.OnListChanged += OnScoreBoardChanged;
         _gameStateText.OnValueChanged = OnGameStateTextChanged;
         _currentStichWinner.OnValueChanged = OnStichWinnerChanged;
         
@@ -76,7 +77,7 @@ public class GameManager : NetworkBehaviour
     // private Dictionary<Player, PreRoundChoice> CurrentPreRoundChoices { get; } =
     //     new Dictionary<Player, PreRoundChoice>();
 
-    private NetworkVariable<FixedString64Bytes> _gameStateText = new();
+    private NetworkVariable<FixedString128Bytes> _gameStateText = new();
 
     [Header("General")] [SerializeField] private TextMeshProUGUI gameStateTextField;
 
@@ -199,16 +200,16 @@ public class GameManager : NetworkBehaviour
     {
         HideScoreBoardClientRpc();
 
+        _roundStartingPlayer = _players.CycleNext(_roundStartingPlayer);
+        // the starting player decides first
+        _currentTurnPlayer = _roundStartingPlayer;
+        
         CurrentGameState.Value = GameState.PreRound;
-        _gameStateText.Value = "Runde vorbereiten...";
+        _gameStateText.Value = $"Runde vorbereiten...\n{_currentTurnPlayer.PlayerName} ist dran";
 
         DealCards();
 
         dealCardsButton.gameObject.SetActive(false);
-        _roundStartingPlayer = _players.CycleNext(_roundStartingPlayer);
-
-        // the starting player decides first
-        _currentTurnPlayer = _roundStartingPlayer;
 
         // We want to use Ramsch as the initial mode:
         // If everyone selects "Weiter", Ramsch is the correct round mode and we won't have to do anything
@@ -254,9 +255,6 @@ public class GameManager : NetworkBehaviour
 
         _gameStateText.Value = $"Runde {ScoreBoard.Count} beendet";
 
-        var playerNames = _players.Select(p => new SerializableString(p.PlayerName)).ToArray();
-        UpdateAndShowScoreBoardClientRpc(playerNames);
-
         dealCardsButton.gameObject.SetActive(true);
     }
 
@@ -277,10 +275,10 @@ public class GameManager : NetworkBehaviour
         }
 
         var entries = new Extensions.ScoreBoardEntry[4];
-        for (int i = 0; i < entries.Length; i++)
+        for (var i = 0; i < entries.Length; i++)
         {
-            var score = roundScores.ToArray()[i];
-            entries[i] = new Extensions.ScoreBoardEntry(score.Key, score.Value);
+            var (playerName, score) = roundScores.ToArray()[i];
+            entries[i] = new Extensions.ScoreBoardEntry(playerName, score);
         }
 
         ScoreBoard.Add(new Extensions.ScoreBoardRow(entries));
@@ -326,6 +324,7 @@ public class GameManager : NetworkBehaviour
         {
             // otherwise display buttons to the next player
             _currentTurnPlayer = _players.CycleNext(_currentTurnPlayer);
+            _gameStateText.Value = $"Runde vorbereiten...\n{_currentTurnPlayer.PlayerName} ist dran";
             _currentTurnPlayer.DisplayPreRoundButtonsClientRpc(CurrentRoundMode.Value);
         }
     }
@@ -478,7 +477,7 @@ public class GameManager : NetworkBehaviour
         var winningPlayer = _players.Cycle(_currentTurnPlayer, CurrentStich.IndexOf(_currentStichWinner.Value) + 1);
 
         // let the players know
-        _gameStateText.Value = $"{winningPlayer.PlayerName} gewinnt mit {_currentStichWinner}...";
+        _gameStateText.Value = $"{winningPlayer.PlayerName} gewinnt mit {_currentStichWinner.Value}...";
 
         // add the stich to the completed stiches
         _completedStiches[currentStichStruct] = winningPlayer;
@@ -513,12 +512,12 @@ public class GameManager : NetworkBehaviour
         if (!IsServer) throw new InvalidOperationException(); // sanity check
         // notify the current player that it's their turn
         _currentTurnPlayer.StartTurnClientRpc();
-        _gameStateText.Value = $"Runde läuft ({CurrentRoundMode})\n{_currentTurnPlayer.PlayerName} ist dran";
+        _gameStateText.Value = $"Runde läuft ({CurrentRoundMode.Value})\n{_currentTurnPlayer.PlayerName} ist dran";
     }
 
     public void AddPlayer(Player player)
     {
-        if (!IsServer) throw new InvalidOperationException(); // sanity check
+        if (!NetworkManager.Singleton.IsServer) throw new InvalidOperationException(); // sanity check TODO not sure if this checks what I want
         Debug.Log($"{MethodBase.GetCurrentMethod()?.DeclaringType}::{MethodBase.GetCurrentMethod()?.Name}: " +
                   $"adding Player {player.NetworkObjectId}");
         _players.Add(player);
@@ -591,21 +590,21 @@ public class GameManager : NetworkBehaviour
         }
     }
 
-    private void OnStichWinnerChanged(PlayingCard.PlayingCardInfo newStichWinner, PlayingCard.PlayingCardInfo newValue)
+    private void OnStichWinnerChanged(PlayingCard.PlayingCardInfo oldValue, PlayingCard.PlayingCardInfo newValue)
     {
         Debug.Log($"{MethodBase.GetCurrentMethod()?.DeclaringType}::{MethodBase.GetCurrentMethod()?.Name}: " +
-                  $"Client {NetworkObjectId} was notified of Stich winner '{newStichWinner}'");
+                  $"Client {NetworkObjectId} was notified of Stich winner '{newValue}'");
         Assert.IsTrue(CurrentStich.Count == 4);
 
-        var i = CurrentStich.IndexOf(newStichWinner);
+        var i = CurrentStich.IndexOf(newValue);
 
-        // we expect the stich winner to be one of the played cards! TODO this fails
+        // we expect the stich winner to be one of the played cards!
         Assert.AreNotEqual(-1, i);
 
         // slightly enlarge the card
         StartCoroutine(HighlightStichCard(i, secondsPauseAfterStich * 1f / 3));
     }
-
+    
     /// <summary>
     ///     Highlights the card at the given index after a given time delaySecs in seconds
     /// </summary>
@@ -622,12 +621,19 @@ public class GameManager : NetworkBehaviour
         winnerImage.rectTransform.localScale = Vector3.one * 1.2f;
     }
 
-    private void OnGameStateTextChanged(FixedString64Bytes previousValue, FixedString64Bytes newValue)
+    private void OnGameStateTextChanged(FixedString128Bytes oldValue, FixedString128Bytes newValue)
     {
         Debug.Log($"{MethodBase.GetCurrentMethod()?.DeclaringType}::{MethodBase.GetCurrentMethod()?.Name}: " +
                   $"new text = \"{newValue}\"");
-        // _gameStateText = newText;
         gameStateTextField.text = newValue.ToString();
+    }
+    
+    private void OnScoreBoardChanged(NetworkListEvent<Extensions.ScoreBoardRow> changeevent)
+    {
+        if (changeevent.Type != NetworkListEvent<Extensions.ScoreBoardRow>.EventType.Add) return;
+        // var playerNames = _players.Select(p => new SerializableString(p.PlayerName)).ToArray();
+        scoreboardDisplay.AddScoreBoardRow(changeevent.Value);
+        scoreboardDisplay.gameObject.SetActive(true);
     }
 
     [ClientRpc]
@@ -636,13 +642,6 @@ public class GameManager : NetworkBehaviour
         // play the shuffle sound
         _audioSource.clip = soundShuffle;
         _audioSource.Play();
-    }
-
-    [ClientRpc]
-    private void UpdateAndShowScoreBoardClientRpc(SerializableString[] playerNames)
-    {
-        scoreboardDisplay.AddScoreBoardRow(playerNames, ScoreBoard[^1]);
-        scoreboardDisplay.gameObject.SetActive(true);
     }
 
     [ClientRpc]

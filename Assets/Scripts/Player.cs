@@ -298,6 +298,11 @@ public class SerializableString : INetworkSerializable
 {
     public string value;
 
+    public SerializableString()
+    {
+        value = "";
+    }
+
     public SerializableString(string value)
     {
         this.value = value;
