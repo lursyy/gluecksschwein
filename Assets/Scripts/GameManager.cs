@@ -12,6 +12,14 @@ public class GameManager : NetworkBehaviour
 {
     public static GameManager Singleton;
 
+    #region Changeable Constants
+
+    [Header("Constant Parameters")]
+    [SerializeField] private int secondsPauseAfterStich = 4;
+    
+
+    #endregion
+    
     #region General
 
     public enum GameState
@@ -29,9 +37,10 @@ public class GameManager : NetworkBehaviour
     private Dictionary<NetworkInstanceId, PreRoundChoice> CurrentPreRoundChoices { get; } =
         new Dictionary<NetworkInstanceId, PreRoundChoice>();
 
-    [SyncVar(hook = nameof(OnGameStateTextChanged))] [SerializeField]
-    private string gameStateText;
+    [SyncVar(hook = nameof(OnGameStateTextChanged))]
+    private string _gameStateText;
 
+    [Header("General")]
     [SerializeField] private Text gameStateTextField;
     
     public enum RoundMode
@@ -55,8 +64,8 @@ public class GameManager : NetworkBehaviour
         Wenz,
     }
 
-    [Header("Players")]
-    public List<Player> players = new List<Player>();
+    private readonly List<Player> _players = new List<Player>();
+     
     public List<Button> localPlayerCardButtons;
     public Button dealCardsButton;
 
@@ -122,13 +131,13 @@ public class GameManager : NetworkBehaviour
         if (CurrentGameState == GameState.Waiting)
         {
             // set starting player to the last one so that before the first round the player 0 gets selected
-            _roundStartingPlayer = players[3];
+            _roundStartingPlayer = _players[3];
         }
 
         // update the game state
         CurrentGameState = GameState.GameRunning;
 
-        gameStateText = "Bereit zum spielen";
+        _gameStateText = "Bereit zum spielen";
         dealCardsButton.gameObject.SetActive(true);
         dealCardsButton.onClick.AddListener(EnterStatePreRound);
         // TODO: show scoreboard
@@ -144,7 +153,7 @@ public class GameManager : NetworkBehaviour
     {
         // update the game state
         CurrentGameState = GameState.PreRound;
-        gameStateText = "Runde vorbereiten...";
+        _gameStateText = "Runde vorbereiten...";
 
         // deal the cards to the players
         DealCards();
@@ -153,7 +162,7 @@ public class GameManager : NetworkBehaviour
         dealCardsButton.gameObject.SetActive(false);
 
         // select the next starting player
-        _roundStartingPlayer = players.CycleNext(_roundStartingPlayer);
+        _roundStartingPlayer = _players.CycleNext(_roundStartingPlayer);
         
         // the starting player decides first
         _currentTurnPlayer = _roundStartingPlayer;
@@ -213,7 +222,7 @@ public class GameManager : NetworkBehaviour
         // maybe we want to show the choices to all players at some point
         CurrentPreRoundChoices[playerId] = playerChoice;
 
-        bool preRoundFinished = playerChoice == PreRoundChoice.Wenz || CurrentPreRoundChoices.Count == players.Count;
+        bool preRoundFinished = playerChoice == PreRoundChoice.Wenz || CurrentPreRoundChoices.Count == _players.Count;
         
         if (preRoundFinished)
         {
@@ -223,7 +232,7 @@ public class GameManager : NetworkBehaviour
         else 
         {
             // otherwise display buttons to the next player
-            _currentTurnPlayer = players.CycleNext(_currentTurnPlayer);
+            _currentTurnPlayer = _players.CycleNext(_currentTurnPlayer);
             _currentTurnPlayer.RpcDisplayPreRoundButtons(CurrentRoundMode);
         }
     }
@@ -268,8 +277,8 @@ public class GameManager : NetworkBehaviour
         else
         {
             // initiate the next player's turn
-            gameStateText = $"Runde läuft ({CurrentRoundMode})\n{_currentTurnPlayer.playerName} ist dran";
-            _currentTurnPlayer = players.CycleNext(_currentTurnPlayer);
+            _gameStateText = $"Runde läuft ({CurrentRoundMode})\n{_currentTurnPlayer.playerName} ist dran";
+            _currentTurnPlayer = _players.CycleNext(_currentTurnPlayer);
             _currentTurnPlayer.RpcStartTurn();
         }
         
@@ -284,10 +293,10 @@ public class GameManager : NetworkBehaviour
 
         // determine who won the stich
         PlayingCard.PlayingCardInfo winningCard = currentStichStruct.CalculateWinningCard();
-        Player winningPlayer = players.Cycle(_currentTurnPlayer, _currentStich.IndexOf(winningCard));
+        Player winningPlayer = _players.Cycle(_currentTurnPlayer, _currentStich.IndexOf(winningCard) + 1);
         
         // let the players know
-        gameStateText = $"{winningPlayer.playerName} gewinnt mit {winningCard}!";
+        _gameStateText = $"{winningPlayer.playerName} gewinnt mit {winningCard}!";
         
         // add the stich to the completed stiches
         _completedStiches.Add(currentStichStruct);
@@ -296,7 +305,7 @@ public class GameManager : NetworkBehaviour
         _currentTurnPlayer = winningPlayer;
         
         // finish the stich after a small delay, so that everyone can understand what happened
-        StartCoroutine(StartNextStichWithDelay(3));
+        StartCoroutine(StartNextStichWithDelay(secondsPauseAfterStich));
     }
 
     [Server]
@@ -327,7 +336,7 @@ public class GameManager : NetworkBehaviour
 
         // notify the current player that it's their turn
         _currentTurnPlayer.RpcStartTurn();
-        gameStateText = $"Runde läuft ({CurrentRoundMode})\n{_currentTurnPlayer.playerName} ist dran";
+        _gameStateText = $"Runde läuft ({CurrentRoundMode})\n{_currentTurnPlayer.playerName} ist dran";
     }
 
     [Server]
@@ -335,11 +344,11 @@ public class GameManager : NetworkBehaviour
     {
         Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
                   $"adding Player {player.netId}");
-        players.Add(player);
+        _players.Add(player);
         
-        gameStateText = $"Warte auf Spieler... ({players.Count})";
+        _gameStateText = $"Warte auf Spieler... ({_players.Count})";
 
-        if (players.Count == 4)
+        if (_players.Count == 4)
         {
             EnterStateGameRunning();
         }
@@ -353,7 +362,7 @@ public class GameManager : NetworkBehaviour
     public void DealCards()
     {
         int handedCards = 0;
-        foreach (Player player in players)
+        foreach (Player player in _players)
         {
             Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
                       $"Player {player.netId} should get cards {handedCards} to {handedCards + 7}");
@@ -398,9 +407,9 @@ public class GameManager : NetworkBehaviour
     private void OnGameStateTextChanged(string newText)
     {
         Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
-                  $"new text = \"{gameStateText}\"");
-        gameStateText = newText;
-        gameStateTextField.text = gameStateText;
+                  $"new text = \"{_gameStateText}\"");
+        _gameStateText = newText;
+        gameStateTextField.text = _gameStateText;
     }
 
     #endregion

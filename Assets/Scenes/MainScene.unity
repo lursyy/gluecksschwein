@@ -213,9 +213,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a2237dc4d86dbf34fa30d5d9a00c5394, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  gameStateText: 
+  secondsPauseAfterStich: 5
   gameStateTextField: {fileID: 1206982139}
-  players: []
   localPlayerCardButtons:
   - {fileID: 2984376459831369652}
   - {fileID: 2984376460352953576}
