@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
+using UnityEngine.Assertions;
 using UnityEngine.Networking;
 using UnityEngine.UI;
 
@@ -109,9 +110,7 @@ public class Player : NetworkBehaviour
                 // for ramsch we don't disable any button
                 break;
             }
-            case GameManager.RoundMode.SauspielBlatt:
-            case GameManager.RoundMode.SauspielEichel:
-            case GameManager.RoundMode.SauspielSchelln:
+            case GameManager.RoundMode.Sauspiel:
             {
                 GameManager.Singleton.preRoundSauspielDropdown.interactable = false;
                 break;
@@ -145,15 +144,16 @@ public class Player : NetworkBehaviour
     private void OnPreRoundChooseSauSpiel(int sauChoiceInt)
     {
         if (!isLocalPlayer) { return; }
-        
+        HidePreRoundButtons();
+
         // do nothing if the player clicked the first dropdown item (which simply says "Sauspiel...")
         if (sauChoiceInt == 0) { return; }
         
         // otherwise, convert the clicked item index into a choice
-        GameManager.PreRoundChoice sauChoice = (GameManager.PreRoundChoice) sauChoiceInt;
+        Assert.IsTrue(0 < sauChoiceInt && sauChoiceInt < 4);
+        PlayingCard.Suit sauChoice = (PlayingCard.Suit) sauChoiceInt - 1;
         
-        HidePreRoundButtons();
-        CmdSelectPreRoundChoice(sauChoice);
+        CmdSelectPreRoundChoice(GameManager.RoundMode.Sauspiel ,sauChoice);
     }
 
     [Client]
@@ -161,7 +161,11 @@ public class Player : NetworkBehaviour
     {
         if (!isLocalPlayer) { return; }
         HidePreRoundButtons();
-        CmdSelectPreRoundChoice(GameManager.PreRoundChoice.Solo);
+
+        // TODO get the solo suit from the user via the UI (create dropdown like with Sauspiel)
+        PlayingCard.Suit additionalTrumps = PlayingCard.Suit.Herz;
+        
+        CmdSelectPreRoundChoice(GameManager.RoundMode.Solo, additionalTrumps);
     }
 
     [Client]
@@ -169,7 +173,11 @@ public class Player : NetworkBehaviour
     {
         if (!isLocalPlayer) { return; }
         HidePreRoundButtons();
-        CmdSelectPreRoundChoice(GameManager.PreRoundChoice.Wenz);
+        
+        // TODO get the wenz suit from the user via the UI (create dropdown like with Sauspiel)
+        PlayingCard.Suit additionalTrumps = PlayingCard.Suit.Herz;
+        
+        CmdSelectPreRoundChoice(GameManager.RoundMode.Wenz, additionalTrumps);
     }
 
     [Client]
@@ -177,7 +185,13 @@ public class Player : NetworkBehaviour
     {
         if (!isLocalPlayer) { return; }
         HidePreRoundButtons();
-        CmdSelectPreRoundChoice(GameManager.PreRoundChoice.Weiter);
+        
+        /*
+         * We use Ramsch as a stand-in for "no choice".
+         * This is a bit "dirty", but it lets us use the RoundMode enum directly.
+         * (The suit does not matter here, but we can't pass null)
+         */
+        CmdSelectPreRoundChoice(GameManager.RoundMode.Ramsch, PlayingCard.Suit.Herz);
     }
 
     [Client]
@@ -254,11 +268,11 @@ public class Player : NetworkBehaviour
     }
 
     [Command]
-    private void CmdSelectPreRoundChoice(GameManager.PreRoundChoice choice)
+    private void CmdSelectPreRoundChoice(GameManager.RoundMode roundMode, PlayingCard.Suit roundSuit)
     {
         Debug.Log($"{MethodBase.GetCurrentMethod().DeclaringType}::{MethodBase.GetCurrentMethod().Name}: " +
-                  $"player {netId} sending choice {choice} to the GameManager");
-        GameManager.Singleton.CmdHandlePreRoundChoice(netId, choice);
+                  $"player {netId} sending roundMode {roundMode}, roundSuit {roundSuit} to the GameManager");
+        GameManager.Singleton.CmdHandlePreRoundChoice(netId, roundMode, roundSuit);
     }
     
     /// <summary>

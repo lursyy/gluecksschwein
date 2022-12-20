@@ -62,17 +62,8 @@ namespace Tests
             
             Assert.AreEqual(2, otherPlayers.Count);
             
-            // everyone chooses "weiter" except the sau seeker
-            Dictionary<Player, PreRoundChoice> playerChoices = new Dictionary<Player, PreRoundChoice>
-            {
-                [schellnSauOwner] = PreRoundChoice.Weiter,
-                [otherPlayers[0]] = PreRoundChoice.Weiter,
-                [schellnSauSeeker] = PreRoundChoice.SauspielSchelln,
-                [otherPlayers[1]] = PreRoundChoice.Weiter
-            };
-
             List<List<Player>> actualRoundGroups =
-                CalculateRoundGroups(playerChoices, _players, RoundMode.SauspielSchelln);
+                CalculateRoundGroups(_players, schellnSauSeeker, RoundMode.Sauspiel, Suit.Schelln);
 
             var expectedRoundGroups = new List<List<Player>>
             {
