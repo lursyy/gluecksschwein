@@ -5,6 +5,7 @@ using System.Linq;
 using System.Reflection;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Assertions;
 using UnityEngine.Networking;
 using UnityEngine.UI;
 
@@ -113,6 +114,9 @@ public class GameManager : NetworkBehaviour
     [SerializeField] private Image[] playedCardSlots = new Image[4];
 
     private readonly SyncListPlayingCard _currentStich = new SyncListPlayingCard();
+    
+    [SyncVar(hook = nameof(OnStichWinnerChanged))]
+    private PlayingCard.PlayingCardInfo _currentStichWinner;
 
     /// <summary>
     /// Holds the 8 stiches of a round. Is cleared before the start of every round.
@@ -451,12 +455,11 @@ public class GameManager : NetworkBehaviour
         currentStichStruct.AddAll(_currentStich.ToArray());
 
         // determine who won the stich
-        PlayingCard.PlayingCardInfo winningCard =
-            currentStichStruct.CalculateWinningCard(CurrentRoundMode, CurrentRoundSuit);
-        Player winningPlayer = _players.Cycle(_currentTurnPlayer, _currentStich.IndexOf(winningCard) + 1);
+        _currentStichWinner = currentStichStruct.CalculateWinningCard(CurrentRoundMode, CurrentRoundSuit);
+        Player winningPlayer = _players.Cycle(_currentTurnPlayer, _currentStich.IndexOf(_currentStichWinner) + 1);
 
         // let the players know
-        _gameStateText = $"{winningPlayer.playerName} gewinnt mit {winningCard}...";
+        _gameStateText = $"{winningPlayer.playerName} gewinnt mit {_currentStichWinner}...";
 
         // add the stich to the completed stiches
         _completedStiches[currentStichStruct] = winningPlayer;
@@ -572,6 +575,48 @@ public class GameManager : NetworkBehaviour
                 break;
             default:
                 throw new InvalidOperationException($"{nameof(op)}={op}");
+        }
+    }
+
+    private void OnStichWinnerChanged(PlayingCard.PlayingCardInfo newStichWinner)
+    {
+        if (_currentStich.Count != 4) return;
+        
+        int i = _currentStich.IndexOf(newStichWinner);
+        
+        // we expect the stich winner to be one of the played cards!
+        Assert.AreNotEqual(-1, i);
+
+        // slightly enlarge the card
+        StartCoroutine(nameof(EmphasizeStichWinner));
+    }
+
+    private IEnumerator EmphasizeStichWinner()
+    {
+        yield return new WaitForSeconds(secondsPauseAfterStich * 1f/3);
+        
+        int i = _currentStich.IndexOf(_currentStichWinner);
+        Assert.AreNotEqual(-1, i);
+        Image winnerImage = playedCardSlots[i];
+        
+        // slightly enlarge the card, and decrease opacity of the other cards
+        winnerImage.rectTransform.localScale = Vector3.one * 1.2f;
+        foreach (var image in playedCardSlots)
+        {
+            if (image == winnerImage) continue;
+            var col = image.color;
+            col.a = 0.5f;
+            image.color = col;
+        }
+        yield return new WaitForSeconds(secondsPauseAfterStich * 1f/3);
+        
+        // reset everything back to normal
+        winnerImage.rectTransform.localScale = Vector3.one;
+        foreach (var image in playedCardSlots)
+        {
+            var col = image.color;
+            col.a = 1;
+            image.color = col;
         }
     }
 
