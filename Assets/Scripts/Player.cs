@@ -27,7 +27,7 @@ public class Player : NetworkBehaviour
     public override void OnStartLocalPlayer()
     {
         Debug.Log($"Player::OnStartLocalPlayer: I am player {netId} on the local player");
-        GameManager.Singleton.localPlayer = this;
+        // GameManager.Singleton.localPlayer = this;
         _handButtons = GameManager.Singleton.localPlayerCardButtons;
     }
 
